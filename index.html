@@ -17,8 +17,12 @@ const CONFIG = {
   logoUrl:  "logo.png",            // mall logo, top right
   companyName: "Mega Properties",
   companyLogoUrl: "company-logo.png", // company logo, top left
+  // Footer contact details (leave "" to hide a line)
+  contactPhone: "",
+  contactEmail: "",
+  watermark: true,                    // faint mall logo behind the page
   // Your Google Sheet, published as CSV (File > Share > Publish to web > CSV). Leave "" to use the list built into this file.
-  sheetCsvUrl: "",
+  sheetCsvUrl: "https://docs.google.com/spreadsheets/d/14xt9tws9H6iMtM5Kdwru3LwVhVpqSQk5AvuMzIYjXuQ/gviz/tq?tqx=out:csv&sheet=Mega%20Plaza",
   // Link the QR code opens. Leave "" to use this page's own address.
   qrLink: "https://mega-properties.github.io/mega-plaza/",
   // How often the page re-checks the sheet, in minutes (useful for the TV).
@@ -37,15 +41,15 @@ const CONFIG = {
   --warn:#c27c0e;
   --display:"Archivo","Arial Narrow",Arial,sans-serif;
   --body:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
-  --r:10px; color-scheme:light;
+  --r:10px; --surface-a:rgba(255,255,255,.86); color-scheme:light;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
     --bg:#0e151b; --surface:#16212a; --ink:#e6edf2; --muted:#98a9b6; --line:#283643;
-    --accent:#4cade0; --accent-ink:#04202e; --band:#0a1f2d; --band-ink:#e6edf2; color-scheme:dark;
+    --accent:#4cade0; --accent-ink:#04202e; --band:#0a1f2d; --band-ink:#e6edf2; color-scheme:dark; --surface-a:rgba(22,33,42,.88);
   }
 }
-:root[data-theme="dark"]{
+:root[data-theme="dark"]{ --surface-a:rgba(22,33,42,.88);
   --bg:#0e151b; --surface:#16212a; --ink:#e6edf2; --muted:#98a9b6; --line:#283643;
   --accent:#4cade0; --accent-ink:#04202e; --band:#0a1f2d; --band-ink:#e6edf2; color-scheme:dark;
 }
@@ -97,7 +101,7 @@ select{padding:10px 12px;border:1px solid var(--line);border-radius:8px;backgrou
 .fsec+.fsec{margin-top:26px}
 .fh{display:flex;align-items:baseline;gap:10px;font-size:20px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;padding-bottom:8px;margin-bottom:12px;border-bottom:3px solid var(--ink)}
 .fh small{font:500 13px var(--body);color:var(--muted);text-transform:none;letter-spacing:0}
-.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;display:grid;grid-template-columns:56px 1fr;gap:12px;position:relative;overflow:hidden}
+.card{background:var(--surface-a);border:1px solid var(--line);border-radius:var(--r);padding:14px;display:grid;grid-template-columns:56px 1fr;gap:12px;position:relative;overflow:hidden}
 .card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--cat)}
 .logo{width:56px;height:56px;border-radius:9px;display:grid;place-items:center;overflow:hidden;background:var(--cat);color:#fff;font:800 18px var(--display)}
 .logo img,.mini img{width:100%;height:100%;object-fit:contain;background:#fff}
@@ -108,11 +112,11 @@ select{padding:10px 12px;border:1px solid var(--line);border-radius:8px;backgrou
 .actions{display:flex;gap:12px;margin-top:8px;flex-wrap:wrap}
 .actions a{font-size:13px;font-weight:600;color:var(--accent);text-decoration:none}
 .pill{display:inline-block;margin-bottom:4px;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--warn);color:#fff;text-transform:uppercase;letter-spacing:.04em}
-.empty{padding:40px 16px;text-align:center;color:var(--muted);background:var(--surface);border:1px dashed var(--line);border-radius:var(--r)}
-.qr-strip{display:flex;align-items:center;gap:16px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 16px;margin-top:22px}
+.empty{padding:40px 16px;text-align:center;color:var(--muted);background:var(--surface-a);border:1px dashed var(--line);border-radius:var(--r)}
+.qr-strip{display:flex;align-items:center;gap:16px;background:var(--surface-a);border:1px solid var(--line);border-radius:var(--r);padding:12px 16px;margin-top:22px}
 .qr-box{background:#fff;padding:12px;border-radius:6px;flex:none;line-height:0}
 .hint{font-size:13px;color:var(--muted)}
-.board{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.board{background:var(--surface-a);border:1px solid var(--line);border-radius:14px;overflow:hidden}
 .board-head{background:var(--band);color:var(--band-ink);padding:22px 26px;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:20px}
 @media (max-width:640px){.board-head{grid-template-columns:1fr 1fr}.bh-title{grid-column:1/-1;order:3}.bh-logo{height:84px;min-width:0}.bh-logo img{max-height:64px;max-width:100%}}
 .board-head h2{font-size:34px;font-weight:800;letter-spacing:.02em;text-transform:uppercase}
@@ -136,9 +140,23 @@ select{padding:10px 12px;border:1px solid var(--line);border-radius:8px;backgrou
 .board-foot .scan{display:flex;align-items:center;gap:14px}
 .board-foot strong{font:800 20px var(--display)}
 .ghost{border:1px solid rgba(255,255,255,.3);background:transparent;color:var(--band-ink);padding:8px 14px;border-radius:8px;cursor:pointer;font-weight:600}
+.board.wm-board{color:#13202a}
 .board:fullscreen{overflow:auto;border-radius:0}
 .board:fullscreen .brow{font-size:22px}
-footer{max-width:1180px;margin:0 auto;padding:0 16px 30px;font-size:12px;color:var(--muted)}
+.logobar,.top{position:relative;z-index:2}
+main{position:relative;z-index:1}
+.wm{position:fixed;left:0;right:0;bottom:0;top:0;z-index:0;pointer-events:none;background:center 60%/min(72vw,720px) no-repeat;opacity:.09;mix-blend-mode:multiply}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .wm{filter:invert(1);mix-blend-mode:screen;opacity:.06}}
+:root[data-theme="dark"] .wm{filter:invert(1);mix-blend-mode:screen;opacity:.06}
+.site-foot{position:relative;z-index:1;background:var(--band);color:var(--band-ink);margin-top:10px}
+.site-foot .in{max-width:1180px;margin:0 auto;padding:22px 16px;display:flex;flex-wrap:wrap;gap:12px 28px;align-items:center;justify-content:space-between}
+.site-foot h2{font-size:16px;font-weight:700;margin:0 0 6px}
+.site-foot .contacts{display:flex;flex-wrap:wrap;gap:8px 22px;font-size:15px}
+.site-foot a{color:var(--band-ink);text-decoration:none;display:inline-flex;align-items:center;gap:8px;font-weight:600}
+.site-foot a:hover{text-decoration:underline}
+.site-foot svg{flex:none;opacity:.85}
+.site-foot small{display:block;opacity:.7;font-size:12px}
+footer#foot{position:relative;z-index:1;max-width:1180px;margin:0 auto;padding:0 16px 14px;font-size:12px;color:var(--muted)}
 </style>
 </head>
 <body>
@@ -147,8 +165,10 @@ footer{max-width:1180px;margin:0 auto;padding:0 16px 30px;font-size:12px;color:v
   <div class="brand"><div><h1 id="brandName"></h1><p id="brandTag"></p></div></div>
   <nav class="tabs" aria-label="Views"><a href="#directory" id="tabDir">Directory</a><a href="#board" id="tabBoard">Board view</a></nav>
 </header>
+<div class="wm" id="wm" aria-hidden="true"></div>
 <main id="main"></main>
 <footer id="foot"></footer>
+<footer class="site-foot"><div class="in" id="siteFoot"></div></footer>
 
 <script>
 function ordinal(n){const t=n%100;return n+((t>10&&t<14)?"th":({1:"st",2:"nd",3:"rd"})[n%10]||"th")}
@@ -333,7 +353,17 @@ async function load(){
 
 /* ---- header ---- */
 function logoImg(u,name){const x=imgUrl(u);return x?`<img src="${esc(x)}" alt="${esc(name||"")} logo">`:`<span class="txt">${esc(name||"")}</span>`}
+function paintFooter(){
+  const ph=String(CONFIG.contactPhone||"").trim(),em=String(CONFIG.contactEmail||"").trim();
+  const tel=ph.replace(/[^\d+]/g,"");
+  const phoneSvg='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg>';
+  const mailSvg='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></svg>';
+  $("#siteFoot").innerHTML=`<div><h2>For enquiries</h2><div class="contacts">${ph?`<a href="tel:${esc(tel)}">${phoneSvg}${esc(ph)}</a>`:""}${em?`<a href="mailto:${esc(em)}">${mailSvg}${esc(em)}</a>`:""}${!ph&&!em?"<span>Visit the mall management office</span>":""}</div></div>
+    <small>${esc(CONFIG.mallName||"")}${CONFIG.companyName?" · Managed by "+esc(CONFIG.companyName):""}</small>`;
+  const w=$("#wm"),lg=imgUrl(CONFIG.logoUrl);if(w){w.style.backgroundImage=(CONFIG.watermark!==false&&lg)?`url("${lg}")`:"none"}
+}
 function paintHeader(){
+  paintFooter();
   document.title=(CONFIG.mallName||"Mall")+" Directory";
   $("#brandName").textContent=CONFIG.mallName||"Mall Directory";$("#brandTag").textContent=CONFIG.tagline||"";
   $("#coLogo").innerHTML=logoImg(CONFIG.companyLogoUrl,CONFIG.companyName);$("#mallLogo").innerHTML=logoImg(CONFIG.logoUrl,CONFIG.mallName);
@@ -435,6 +465,7 @@ function fillBoard(){
     <div class="board-foot"><div class="scan"><div class="qr-box" id="qrBoard"></div><div><strong>Can't find it? Scan here</strong><div class="hint">Search every shop on your phone</div></div></div>
       <div class="hint">${all.length} shops</div></div>`;
   drawQR($("#qrBoard"),170);
+  {const lg=imgUrl(CONFIG.logoUrl);b.style.background=(CONFIG.watermark!==false&&lg)?`linear-gradient(rgba(255,255,255,.9),rgba(255,255,255,.9)), url("${lg}") center 55%/min(55vw,640px) no-repeat fixed, #fff`:"";if(lg&&CONFIG.watermark!==false)b.classList.add("wm-board")}
 
 }
 
