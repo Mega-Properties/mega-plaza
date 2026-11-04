@@ -22,7 +22,7 @@ const CONFIG = {
   contactEmail: "marketing@shiloahmega.com, marketing-plaza@shiloahmega.com",                  // several? separate with commas
   watermark: true,                    // faint mall logo behind the page
   // Your Google Sheet, published as CSV (File > Share > Publish to web > CSV). Leave "" to use the list built into this file.
-  sheetCsvUrl: "https://docs.google.com/spreadsheets/d/14xt9tws9H6iMtM5Kdwru3LwVhVpqSQk5AvuMzIYjXuQ/gviz/tq?tqx=out:csv&sheet=Mega%20Plaza",
+  sheetCsvUrl: "https://docs.google.com/spreadsheets/d/14xt9tws9H6iMtM5Kdwru3LwVhVpqSQk5AvuMzIYjXuQ/gviz/tq?tqx=out:csv&headers=1&sheet=Mega%20Plaza",
   // Link the QR code opens. Leave "" to use this page's own address.
   qrLink: "https://mega-properties.github.io/mega-plaza/",
   // How often the page re-checks the sheet, in minutes (useful for the TV).
@@ -375,6 +375,7 @@ function matchFloor(v){v=String(v||"").toLowerCase().trim();if(!v)return"Ground 
   const n=v.match(/\d+/);return n?ordinal(+n[0])+" Floor":"Ground Floor"}
 function matchStatus(v){v=String(v||"").toLowerCase().trim();
   if(/coming|offer|soon/.test(v))return"Coming Soon";if(/vacant|vacated|closed|prospect|hide/.test(v))return"Vacant";return"Open"}
+function fixText(v){v=String(v||"");if(/[ÃÂâ][\u0080-\u00ff]/.test(v)){try{return decodeURIComponent(escape(v))}catch(e){}}return v}
 function toTenants(text){
   const rows=parseCSV(text);if(rows.length<2)return[];
   const head=rows[0].map(h=>h.toLowerCase().trim());
@@ -382,7 +383,7 @@ function toTenants(text){
   const col2=(...n)=>{const e=col(...n);return e>=0?e:head.findIndex(h=>n.some(x=>h.includes(x)))};
   const ix={name:col2("name","trading name","shop name","tenant"),category:col2("category"),about:col2("about","nature","description"),floor:col2("floor","level"),
     shop:col("shop","shop no","shop number","unit"),phone:col2("phone","whatsapp"),hours:col2("hours"),status:col2("status"),logo:col2("logo")};
-  return rows.slice(1).map(r=>{const g=k=>ix[k]>=0?String(r[ix[k]]||"").trim():"";
+  return rows.slice(1).map(r=>{const g=k=>ix[k]>=0?fixText(r[ix[k]]).trim():"";
     return{name:g("name"),category:matchCat(g("category")),about:g("about"),floor:matchFloor(g("floor")),shop:g("shop"),phone:fixPhone(g("phone")),hours:g("hours"),status:matchStatus(g("status")),logo:imgUrl(g("logo"))}})
     .filter(t=>t.name);
 }
