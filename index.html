@@ -377,7 +377,15 @@ function matchStatus(v){v=String(v||"").toLowerCase().trim();
   if(/coming|offer|soon/.test(v))return"Coming Soon";if(/vacant|vacated|closed|prospect|hide/.test(v))return"Vacant";return"Open"}
 function fixText(v){v=String(v||"");if(/[ÃÂâ][\u0080-\u00ff]/.test(v)){try{return decodeURIComponent(escape(v))}catch(e){}}return v}
 function toTenants(text){
-  const rows=parseCSV(text);if(rows.length<2)return[];
+  const rows=parseCSV(text);if(!rows.length)return[];
+  /* Google sometimes merges the first shop row into the headings ("name Khushi Motors").
+     Split it back out so that shop isn't lost. */
+  const LABELS=["name","category","about","floor","shop","phone","hours","status","logo"];
+  let rescued=null;
+  rows[0]=rows[0].map((h,i)=>{const raw=String(h||"").trim();const m=raw.match(/^(\S+)\s+([\s\S]+)$/);
+    if(m&&LABELS.includes(m[1].toLowerCase())){(rescued=rescued||rows[0].map(()=>""))[i]=m[2];return m[1]}return raw});
+  if(rescued&&rescued.some(v=>v.trim()))rows.splice(1,0,rescued);
+  if(rows.length<2)return[];
   const head=rows[0].map(h=>h.toLowerCase().trim());
   const col=(...n)=>head.findIndex(h=>n.some(x=>h===x));
   const col2=(...n)=>{const e=col(...n);return e>=0?e:head.findIndex(h=>n.some(x=>h.includes(x)))};
