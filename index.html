@@ -182,6 +182,8 @@ main{position:relative;z-index:1}
 <footer class="site-foot"><div class="in" id="siteFoot"></div><div class="status" id="foot"></div></footer>
 
 <script>
+/* If the settings block at the top has a typo, keep the page working and say so. */
+if(typeof CONFIG==="undefined"){window.CONFIG={mallName:"Mall Directory",tagline:"",logoUrl:"",companyName:"",companyLogoUrl:"",contactPhone:"",contactEmail:"",watermark:false,sheetCsvUrl:"",qrLink:"",refreshMinutes:5};window.CONFIG_BROKEN=true}
 function ordinal(n){const t=n%100;return n+((t>10&&t<14)?"th":({1:"st",2:"nd",3:"rd"})[n%10]||"th")}
 const FALLBACK_CSV=`name,category,about,floor,shop,phone,hours,status,logo
 Alex Otieno Ochieng,Services,Cyber & computer shop,Basement,"Kiosk, Block B",,,Open,
@@ -311,7 +313,7 @@ const CATS=[
   {k:"Education",v:"--c-edu"},{k:"Offices & Agencies",v:"--c-office"},{k:"Services",v:"--c-services"},
   {k:"Other",v:"--c-other"}];
 const FLOORS=["Ground Floor","Mezzanine Floor",...Array.from({length:15},(_,i)=>ordinal(i+1)+" Floor"),"Basement","Outdoor"];
-const S={tenants:[],loaded:false,error:"",updated:null,view:"directory",group:"floor",q:"",cat:"All",floor:"All"};
+const S={error:"",tenants:[],loaded:false,error:"",updated:null,view:"directory",group:"floor",q:"",cat:"All",floor:"All"};
 const $=s=>document.querySelector(s);
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const catOf=k=>CATS.find(c=>c.k===k)||CATS[CATS.length-1];
@@ -416,7 +418,7 @@ function show(){
 }
 function refresh(){
   paintHeader();
-  const n=$("#note");if(n)n.innerHTML=S.error?`<div class="notice">${esc(S.error)}</div>`:"";
+  const n=$("#note");if(n)n.innerHTML=(window.CONFIG_BROKEN?`<div class="notice">There is a typo in the settings at the top of index.html. Check that every line has its quotes and ends with a comma. The page is showing the built-in list without logos or contacts until it is fixed.</div>`:"")+(S.error&&!window.CONFIG_BROKEN?`<div class="notice">${esc(S.error)}</div>`:"");
   S.view==="directory"?fillDirectory():fillBoard();
 }
 function fillDirectory(){
