@@ -167,19 +167,52 @@ main{position:relative;z-index:1}
   .site-foot .in{padding:8px 12px;gap:4px 14px}.site-foot h2{display:none}
   .site-foot .contacts{font-size:13px;gap:4px 14px}.site-foot small{display:none}
 }
+
+/* one-row header: company logo | name + view buttons | mall logo */
+.hdr{background:#fff;color:#13202a;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:18px;padding:8px 20px;border-bottom:4px solid var(--band)}
+.hdr img{height:64px;width:auto;max-width:22vw;object-fit:contain;display:block}
+.hdr .txt{font:800 18px var(--display);color:#13202a}
+.hdr .mid{display:flex;align-items:center;justify-content:center;gap:12px 32px;flex-wrap:wrap;min-width:0}
+.hdr .brand{text-align:center}
+.hdr .brand h1{font-size:24px;color:#0d2b3e}
+.hdr .brand p{color:#5a6a77;opacity:1;font-size:13px}
+.hdr .tabs{background:#e8edf2}
+.hdr .tabs a{color:#0d2b3e}
+.hdr .tabs a[aria-current="page"]{background:#0d2b3e;color:#fff}
+/* one-line footer */
+.site-foot .in{padding:9px 16px;gap:6px 24px}
+.site-foot .contacts{display:flex;flex-wrap:wrap;align-items:center;gap:6px 22px;font-size:14px}
+.site-foot .lbl{font-weight:700;opacity:.8}
+.site-foot .in{flex-wrap:nowrap}
+.site-foot .contacts{flex:none}
+.site-foot .meta-r{display:flex;flex-wrap:nowrap;gap:4px 14px;font-size:12px;opacity:.7;margin-left:auto;min-width:0;justify-content:flex-end;white-space:nowrap}
+.site-foot .meta-r>*{overflow:hidden;text-overflow:ellipsis}
+#footBrand{flex:none}
+@media (max-width:1100px){.site-foot .in{flex-wrap:wrap}.site-foot .contacts{flex:1 1 100%}.site-foot .meta-r{margin-left:0}}
+.site-foot .status{padding:0;opacity:1;font-size:12px;max-width:none;margin:0}
+@media (max-width:600px){
+  .hdr{gap:8px;padding:6px 10px}.hdr img{height:36px}
+  .hdr .mid{flex-direction:column;gap:4px}.hdr .brand h1{font-size:16px}.hdr .brand p{display:none}
+  .hdr .tabs a{padding:4px 10px;font-size:12px}
+  .site-foot .in{padding:6px 12px}.site-foot .lbl,.site-foot .meta-r{display:none}
+  .site-foot .contacts{font-size:13px;gap:4px 14px}
+}
 </style>
 </head>
 <body>
 <div class="sticky-top">
-<div class="logobar"><span id="coLogo"></span><span id="mallLogo"></span></div>
-<header class="top">
-  <div class="brand"><div><h1 id="brandName"></h1><p id="brandTag"></p></div></div>
-  <nav class="tabs" aria-label="Views"><a href="#directory" id="tabDir">Directory</a><a href="#board" id="tabBoard">Board view</a></nav>
+<header class="hdr">
+  <span class="hl" id="coLogo"></span>
+  <div class="mid">
+    <div class="brand"><h1 id="brandName"></h1><p id="brandTag"></p></div>
+    <nav class="tabs" aria-label="Views"><a href="#directory" id="tabDir">Directory</a><a href="#board" id="tabBoard">Board view</a></nav>
+  </div>
+  <span class="hr" id="mallLogo"></span>
 </header>
 </div>
 <div class="wm" id="wm" aria-hidden="true"></div>
 <main id="main"></main>
-<footer class="site-foot"><div class="in" id="siteFoot"></div><div class="status" id="foot"></div></footer>
+<footer class="site-foot"><div class="in"><div class="contacts" id="siteFoot"></div><div class="meta-r"><span id="footBrand"></span><span class="status" id="foot"></span></div></div></footer>
 
 <script>
 /* If the settings block at the top has a typo, keep the page working and say so. */
@@ -371,8 +404,8 @@ function paintFooter(){
   const tel=ph.replace(/[^\d+]/g,"");
   const phoneSvg='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg>';
   const mailSvg='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></svg>';
-  $("#siteFoot").innerHTML=`<div><h2>For enquiries</h2><div class="contacts">${ph?`<a href="tel:${esc(tel)}">${phoneSvg}${esc(ph)}</a>`:""}${em.split(/[,;&]+/).map(x=>x.trim()).filter(Boolean).map(x=>`<a href="mailto:${esc(x)}">${mailSvg}${esc(x)}</a>`).join("")}${!ph&&!em?"<span>Visit the mall management office</span>":""}</div></div>
-    <small>${esc(CONFIG.mallName||"")}${CONFIG.companyName?" · Managed by "+esc(CONFIG.companyName):""}</small>`;
+  $("#siteFoot").innerHTML=`<span class="lbl">For enquiries:</span>${ph?`<a href="tel:${esc(tel)}">${phoneSvg}${esc(ph)}</a>`:""}${em.split(/[,;&]+/).map(x=>x.trim()).filter(Boolean).map(x=>`<a href="mailto:${esc(x)}">${mailSvg}${esc(x)}</a>`).join("")}${!ph&&!em?"<span>Visit the mall management office</span>":""}`;
+  $("#footBrand").textContent=(CONFIG.mallName||"")+(CONFIG.companyName?" · Managed by "+CONFIG.companyName:"");
   const w=$("#wm"),lg=imgUrl(CONFIG.logoUrl);if(w){w.style.backgroundImage=(CONFIG.watermark!==false&&lg)?`url("${lg}")`:"none"}
 }
 function paintHeader(){
@@ -382,7 +415,7 @@ function paintHeader(){
   $("#coLogo").innerHTML=logoImg(CONFIG.companyLogoUrl,CONFIG.companyName);$("#mallLogo").innerHTML=logoImg(CONFIG.logoUrl,CONFIG.mallName);
   $("#tabDir").toggleAttribute("aria-current",S.view==="directory");if(S.view==="directory")$("#tabDir").setAttribute("aria-current","page");
   $("#tabBoard").toggleAttribute("aria-current",S.view==="board");if(S.view==="board")$("#tabBoard").setAttribute("aria-current","page");
-  $("#foot").textContent=S.fallback?"Couldn't reach the Google Sheet, so this is the built-in shop list. Check this device's internet connection.":S.updated?`Shop list updated ${S.updated.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})}`:"";
+  $("#foot").textContent=S.fallback?"Couldn't reach the Google Sheet, so this is the built-in shop list. Check this device's internet connection.":S.updated?`Updated ${S.updated.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})}`:"";
 }
 const qrLink=()=>CONFIG.qrLink||location.href.split("#")[0];
 function drawQR(el,size){if(!el||typeof QRCode==="undefined")return;el.innerHTML="";new QRCode(el,{text:qrLink(),width:size,height:size,colorDark:"#000000",colorLight:"#ffffff",correctLevel:QRCode.CorrectLevel.M})}
