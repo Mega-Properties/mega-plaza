@@ -37,7 +37,7 @@ const CONFIG = {
   --accent:#0a6a9e; --accent-ink:#ffffff; --band:#0d2b3e; --band-ink:#ffffff;
   --c-food:#e0712c; --c-fashion:#e05aa0; --c-tech:#2d6bd3; --c-bank:#2a955a;
   --c-health:#14907f; --c-beauty:#8853c6; --c-grocery:#b98d0c; --c-home:#8a5a2b; --c-ent:#d1386b;
-  --c-motor:#3d4f63; --c-office:#4f6fa8; --c-edu:#b5651d; --c-services:#687581; --c-other:#46525d;
+  --c-motor:#3d4f63; --c-office:#4f6fa8; --c-edu:#b5651d; --c-fac:#0f6e8c; --c-services:#687581; --c-other:#46525d;
   --warn:#c27c0e;
   --display:"Archivo","Arial Narrow",Arial,sans-serif;
   --body:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
@@ -197,6 +197,19 @@ main{position:relative;z-index:1}
   .site-foot .in{padding:6px 12px}.site-foot .lbl,.site-foot .meta-r{display:none}
   .site-foot .contacts{font-size:13px;gap:4px 14px}
 }
+
+/* open now / facilities / search */
+:root{--open:#1f9d55}
+.oc{display:inline-block;margin-top:5px;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;letter-spacing:.02em}
+.oc.is-open{background:#e3f5ea;color:#17703e}
+.oc.is-closed{background:#eceff2;color:#5a6a77}
+.openchip[aria-pressed="true"]{background:var(--open);border-color:var(--open);color:#fff}
+.facs{background:var(--surface-a);border:1px solid var(--line);border-left:4px solid var(--c-fac);border-radius:var(--r);padding:12px 16px;margin:0 0 20px}
+.facs h2{font-size:15px;text-transform:uppercase;letter-spacing:.04em;margin:0 0 8px;color:var(--c-fac)}
+.faclist{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:6px 18px}
+.fac{display:flex;flex-direction:column;font-size:13px;line-height:1.35}
+.fac b{font-size:14px}
+.fac span{color:var(--muted)}
 </style>
 </head>
 <body>
@@ -344,9 +357,9 @@ const CATS=[
   {k:"Home & Furniture",v:"--c-home"},{k:"Banks & Money",v:"--c-bank"},
   {k:"Entertainment & Leisure",v:"--c-ent"},{k:"Motoring",v:"--c-motor"},
   {k:"Education",v:"--c-edu"},{k:"Offices & Agencies",v:"--c-office"},{k:"Services",v:"--c-services"},
-  {k:"Other",v:"--c-other"}];
+  {k:"Other",v:"--c-other"},{k:"Facilities",v:"--c-fac"}];
 const FLOORS=["Ground Floor","Mezzanine Floor",...Array.from({length:15},(_,i)=>ordinal(i+1)+" Floor"),"Basement","Outdoor"];
-const S={error:"",tenants:[],loaded:false,error:"",updated:null,view:"directory",group:"floor",q:"",cat:"All",floor:"All"};
+const S={openOnly:false,error:"",tenants:[],loaded:false,error:"",updated:null,view:"directory",group:"floor",q:"",cat:"All",floor:"All"};
 const $=s=>document.querySelector(s);
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const catOf=k=>CATS.find(c=>c.k===k)||CATS[CATS.length-1];
@@ -365,7 +378,7 @@ function parseCSV(t){const rows=[];let r=[],f="",q=false;for(let i=0;i<t.length;
   if(q){if(c==='"'){if(t[i+1]==='"'){f+='"';i++}else q=false}else f+=c}
   else if(c==='"')q=true;else if(c===","){r.push(f);f=""}else if(c==="\n"){r.push(f);rows.push(r);r=[];f=""}else if(c!=="\r")f+=c}
   if(f||r.length){r.push(f);rows.push(r)}return rows.filter(x=>x.some(v=>v.trim()))}
-function matchCat(v){v=String(v||"").toLowerCase().trim();if(!v)return"Other";
+function matchCat(v){v=String(v||"").toLowerCase().trim();if(!v)return"Other";if(/facilit|amenit/.test(v))return"Facilities";
   const hit=CATS.find(c=>c.k.toLowerCase()===v)||CATS.find(c=>c.k.toLowerCase().split(/[ &]+/).some(w=>w.length>3&&v.includes(w)));return hit?hit.k:"Other"}
 function matchFloor(v){v=String(v||"").toLowerCase().trim();if(!v)return"Ground Floor";
   if(/mezz/.test(v))return"Mezzanine Floor";if(/out/.test(v))return"Outdoor";
@@ -380,7 +393,7 @@ function toTenants(text){
   const rows=parseCSV(text);if(!rows.length)return[];
   /* Google sometimes merges the first shop row into the headings ("name Khushi Motors").
      Split it back out so that shop isn't lost. */
-  const LABELS=["name","category","about","floor","shop","phone","hours","status","logo"];
+  const LABELS=["name","category","about","floor","shop","phone","hours","status","logo","keywords"];
   let rescued=null;
   rows[0]=rows[0].map((h,i)=>{const raw=String(h||"").trim();const m=raw.match(/^(\S+)\s+([\s\S]+)$/);
     if(m&&LABELS.includes(m[1].toLowerCase())){(rescued=rescued||rows[0].map(()=>""))[i]=m[2];return m[1]}return raw});
@@ -390,9 +403,9 @@ function toTenants(text){
   const col=(...n)=>head.findIndex(h=>n.some(x=>h===x));
   const col2=(...n)=>{const e=col(...n);return e>=0?e:head.findIndex(h=>n.some(x=>h.includes(x)))};
   const ix={name:col2("name","trading name","shop name","tenant"),category:col2("category"),about:col2("about","nature","description"),floor:col2("floor","level"),
-    shop:col("shop","shop no","shop number","unit"),phone:col2("phone","whatsapp"),hours:col2("hours"),status:col2("status"),logo:col2("logo")};
+    shop:col("shop","shop no","shop number","unit"),phone:col2("phone","whatsapp"),hours:col2("hours"),status:col2("status"),logo:col2("logo"),keywords:col2("keywords","tags","search")};
   return rows.slice(1).map(r=>{const g=k=>ix[k]>=0?fixText(r[ix[k]]).trim():"";
-    return{name:g("name"),category:matchCat(g("category")),about:g("about"),floor:matchFloor(g("floor")),shop:g("shop"),phone:fixPhone(g("phone")),hours:g("hours"),status:matchStatus(g("status")),logo:imgUrl(g("logo"))}})
+    return{name:g("name"),category:matchCat(g("category")),about:g("about"),floor:matchFloor(g("floor")),shop:g("shop"),phone:fixPhone(g("phone")),hours:g("hours"),status:matchStatus(g("status")),logo:imgUrl(g("logo")),keywords:g("keywords")}})
     .filter(t=>t.name);
 }
 async function load(){
@@ -432,7 +445,51 @@ function segHTML(){return `<div class="seg" role="group" aria-label="Group shops
 function wireSeg(root){root.querySelectorAll("[data-group]").forEach(b=>b.addEventListener("click",()=>{S.group=b.dataset.group;
   root.querySelectorAll("[data-group]").forEach(x=>x.setAttribute("aria-pressed",x.dataset.group===S.group?"true":"false"));refresh()}))}
 function floorGroups(list){const out=[];[...list].sort(byFloor).forEach(t=>{let g=out.find(x=>x.f===t.floor);if(!g){g={f:t.floor,items:[]};out.push(g)}g.items.push(t)});return out}
-const visible=()=>S.tenants.filter(t=>t.status!=="Vacant");
+const visibleAll=()=>S.tenants.filter(t=>t.status!=="Vacant");
+const visible=()=>visibleAll().filter(t=>t.category!=="Facilities");
+const facilities=()=>visibleAll().filter(t=>t.category==="Facilities");
+
+/* ---- opening hours: "8am - 9pm", "08:00-21:00", "24 hours", "Closed" ---- */
+function parseHours(h){h=String(h||"").toLowerCase().replace(/\s+/g," ").trim();if(!h)return null;
+  if(/24 ?(hours|hrs|h\b)|24\/7|always open/.test(h))return{always:true};
+  if(/^closed/.test(h))return{closed:true};
+  const m=h.match(/(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm|a\.m\.|p\.m\.)?\s*(?:-|–|—|to)\s*(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm|a\.m\.|p\.m\.)?/);
+  if(!m)return null;
+  const mins=(hh,mm,ap)=>{hh=+hh;mm=+(mm||0);ap=(ap||"").replace(/\./g,"");if(ap==="pm"&&hh<12)hh+=12;if(ap==="am"&&hh===12)hh=0;return hh*60+mm};
+  let o=mins(m[1],m[2],m[3]),c=mins(m[4],m[5],m[6]);
+  if(!m[3]&&!m[6]&&c<=o&&+m[4]<=12)c+=12*60;          // "8-6" means 8am to 6pm
+  if(!m[3]&&m[6]==="pm"&&o>=c)o-=12*60;               // "8-9pm"
+  if(c===0)c=24*60;
+  return{o,c};}
+function openState(h,now=new Date()){const p=parseHours(h);if(!p)return null;if(p.always)return true;if(p.closed)return false;
+  const x=now.getHours()*60+now.getMinutes();return p.o<=p.c?(x>=p.o&&x<p.c):(x>=p.o||x<p.c)}
+
+/* ---- search: everyday words also find the right shops ---- */
+const SYNONYMS={
+  chemist:["pharmacy","pharmaceutical"],dawa:["pharmacy","pharmaceutical","clinic"],medicine:["pharmacy","pharmaceutical"],
+  doctor:["clinic","hospital","medical","dental"],daktari:["clinic","hospital","medical"],hospital:["hospital","clinic","medical"],
+  dentist:["dental","orthodontic"],teeth:["dental","orthodontic"],eye:["optical","optician","vision"],glasses:["optical","optician","sunglasses"],
+  salon:["salon","barber","beauty","spa"],barber:["barber","salon"],kinyozi:["barber","salon"],hair:["salon","barber","wig","hair"],
+  atm:["atm","bank"],bank:["bank","atm","sacco"],cash:["atm","bank","m-pesa","mpesa","money"],pesa:["m-pesa","mpesa","money","bank","atm"],
+  mpesa:["m-pesa","mpesa","money services"],"m-pesa":["m-pesa","mpesa","money services"],money:["money","m-pesa","bank","atm","sacco"],
+  food:["restaurant","bakery","fast food","juice","coffee","grill","cake"],chakula:["restaurant","fast food","bakery","juice","grill"],
+  eat:["restaurant","fast food","bakery","grill"],coffee:["coffee","café","cafe"],cake:["cake","bakery"],
+  clothes:["boutique","fashion","clothing","wear","outfit","attire","thrift"],nguo:["boutique","fashion","clothing","wear","attire"],
+  shoes:["footwear","shoes"],viatu:["footwear","shoes"],
+  phone:["phone","mobile"],simu:["phone","mobile"],"sim card":["safaricom","airtel","m-pesa"],laptop:["laptop","computer"],
+  computer:["computer","laptop","cyber"],repair:["repair"],cyber:["cyber","printing","photocopying"],printing:["printing","photocopying","cyber"],
+  furniture:["furniture","mattress","décor","decor","interior"],school:["university","college","school","academy","institute","institution"],
+  insurance:["insurance","assurance"],lawyer:["advocates","law firm"],wakili:["advocates","law firm"],
+  groceries:["supermarket","hypermarket","grocery"],supermarket:["supermarket","hypermarket"],
+  toilet:["washroom","toilet"],washroom:["washroom","toilet"],parking:["parking"],lift:["lift","elevator"]
+};
+function matches(t,q){
+  if(!q)return true;
+  const hay=[t.name,t.category,t.about,t.shop,t.floor,t.keywords].join(" ").toLowerCase();
+  if(hay.includes(q))return true;
+  const alts=SYNONYMS[q]||Object.keys(SYNONYMS).filter(k=>(k.length>3&&q.startsWith(k))||(q.length>=3&&k.startsWith(q))).flatMap(k=>SYNONYMS[k]);
+  return alts.some(a=>hay.includes(a));
+}
 
 /* ---- views ---- */
 function show(){
@@ -447,9 +504,10 @@ function show(){
       ${segHTML()}
     </div>
     <div class="chips" id="chips"></div>
+    <div id="facs"></div>
     <div id="grid"></div>
     <div class="qr-strip"><div class="qr-box" id="qrDir"></div><div><strong>Take the directory with you</strong><div class="hint">Scan to open this directory on your phone.</div></div></div>`;
-    $("#q").addEventListener("input",e=>{S.q=e.target.value;fillDirectory()});
+    $("#q").addEventListener("input",e=>{const was=S.q;S.q=e.target.value;if(S.q.trim()&&!was.trim())S.cat="All";fillDirectory()});
     $("#floorf").addEventListener("change",e=>{S.floor=e.target.value;fillDirectory()});
     wireSeg(m);drawQR($("#qrDir"),150);
   }else{
@@ -466,10 +524,16 @@ function refresh(){
 /* Floor filter lists only the floors this mall actually has (taken from the tenant list). */
 function fillFloorFilter(){
   const sel=$("#floorf");if(!sel)return;
-  const floors=[...new Set(visible().map(t=>t.floor).filter(Boolean))].sort((a,b)=>floorRank(a)-floorRank(b));
+  const floors=[...new Set(visibleAll().map(t=>t.floor).filter(Boolean))].sort((a,b)=>floorRank(a)-floorRank(b));
   if(S.floor!=="All"&&!floors.includes(S.floor))S.floor="All";
   const html=`<option value="All">All floors</option>`+floors.map(f=>`<option ${S.floor===f?"selected":""}>${esc(f)}</option>`).join("");
   if(sel.innerHTML!==html)sel.innerHTML=html;
+}
+function fillFacilities(){
+  const box=$("#facs");if(!box)return;
+  const q=S.q.trim().toLowerCase();
+  const list=facilities().filter(t=>(S.floor==="All"||t.floor===S.floor)&&matches(t,q)).sort(byFloor);
+  box.innerHTML=list.length?`<section class="facs"><h2>Mall facilities</h2><div class="faclist">${list.map(t=>`<div class="fac"><b>${esc(t.name)}</b><span>${esc([t.floor,t.shop].filter(Boolean).join(" · "))}${t.about?" — "+esc(t.about):""}</span></div>`).join("")}</div></section>`:"";
 }
 function fillDirectory(){
   fillFloorFilter();
@@ -477,17 +541,21 @@ function fillDirectory(){
   const all=visible();const counts={};all.forEach(t=>{counts[t.category]=(counts[t.category]||0)+1});
   $("#chips").innerHTML=`<button type="button" class="chip" data-cat="All" aria-pressed="${S.cat==="All"}">All <small>${all.length}</small></button>`+
     CATS.filter(c=>counts[c.k]).map(c=>`<button type="button" class="chip" data-cat="${esc(c.k)}" aria-pressed="${S.cat===c.k}"><i style="background:var(${c.v})"></i>${esc(c.k)} <small>${counts[c.k]}</small></button>`).join("");
-  $("#chips").querySelectorAll(".chip").forEach(b=>b.addEventListener("click",()=>{S.cat=b.dataset.cat;fillDirectory()}));
+  const anyHours=all.some(t=>parseHours(t.hours));
+  if(anyHours)$("#chips").insertAdjacentHTML("afterbegin",`<button type="button" class="chip openchip" id="openOnly" aria-pressed="${S.openOnly}"><i style="background:var(--open)"></i>Open now</button>`);
+  $("#chips").querySelectorAll(".chip[data-cat]").forEach(b=>b.addEventListener("click",()=>{S.cat=b.dataset.cat;fillDirectory()}));
+  const oo=$("#openOnly");if(oo)oo.addEventListener("click",()=>{S.openOnly=!S.openOnly;fillDirectory()});
+  fillFacilities();
   if(!S.loaded){grid.innerHTML=`<div class="empty">Loading shops…</div>`;return}
   const q=S.q.trim().toLowerCase();
   const list=all.filter(t=>(S.cat==="All"||t.category===S.cat)&&(S.floor==="All"||t.floor===S.floor)&&
-    (!q||[t.name,t.category,t.about,t.shop,t.floor].join(" ").toLowerCase().includes(q))).sort((a,b)=>a.name.localeCompare(b.name));
+    (!S.openOnly||openState(t.hours)===true)&&matches(t,q)).sort((a,b)=>a.name.localeCompare(b.name));
   const card=t=>{const c=catOf(t.category);const wa=waLink(t.phone);
     return `<article class="card" style="--cat:var(${c.v})">${logoHTML(t)}
-      <div>${t.status==="Coming Soon"?`<span class="pill">Coming soon</span>`:""}<h3>${esc(t.name)}</h3><div class="meta">${esc(t.about||c.k)}${t.hours?" · "+esc(t.hours):""}</div>
+      <div>${t.status==="Coming Soon"?`<span class="pill">Coming soon</span>`:""}<h3>${esc(t.name)}</h3><div class="meta">${esc(t.about||c.k)}${t.hours?" · "+esc(t.hours):""}</div>${(()=>{const o=openState(t.hours);return o===null?"":`<span class="oc ${o?"is-open":"is-closed"}">${o?"Open now":"Closed now"}</span>`})()}
       <div class="where">${t.floor?`<span>${esc(t.floor)}</span>`:""}${t.shop?`<span>${/\d/.test(t.shop)?"Shop ":""}${esc(t.shop)}</span>`:""}</div>
       ${t.phone?`<div class="actions"><a href="tel:${esc(t.phone.replace(/\s/g,""))}">Call ${esc(t.phone)}</a>${wa?`<a href="${wa}" target="_blank" rel="noopener">WhatsApp</a>`:""}</div>`:""}</div></article>`};
-  grid.innerHTML=!list.length?`<div class="empty">${S.tenants.length?"No shops match your search.":"No shops listed yet."}</div>`:
+  grid.innerHTML=!list.length?`<div class="empty">${S.tenants.length?(S.openOnly?"No shops are open right now that match your search.":"No shops match your search."):"No shops listed yet."}</div>`:
     S.group==="floor"?floorGroups(list).map(g=>`<section class="fsec"><h2 class="fh">${esc(g.f)}<small>${g.items.length} ${g.items.length===1?"shop":"shops"}</small></h2><div class="grid">${g.items.map(card).join("")}</div></section>`).join(""):
     `<div class="grid">${list.map(card).join("")}</div>`;
 }
@@ -512,10 +580,11 @@ function packCols(groups,n){
 }
 let rsz;window.addEventListener("resize",()=>{clearTimeout(rsz);rsz=setTimeout(()=>{if(S.view==="board")fillBoard()},200)});
 function fillBoard(){
-  const b=$("#board");if(!b)return;const all=visible();
+  const b=$("#board");if(!b)return;const all=visible();const facs=facilities().sort(byFloor);
   const groups=S.group==="floor"
     ?floorGroups(all).map(g=>({title:g.f,color:"var(--ink)",items:g.items,tag:t=>t.shop}))
     :CATS.map(c=>({title:c.k,color:`var(${c.v})`,items:all.filter(t=>t.category===c.k).sort(byFloor),tag:t=>[t.shop,shortFloor(t.floor)].filter(Boolean).join(" · ")})).filter(g=>g.items.length);
+  if(facs.length)groups.push({title:"Mall facilities",color:"var(--c-fac)",items:facs,tag:t=>[shortFloor(t.floor),t.shop].filter(Boolean).join(" · ")});
   const used=CATS.filter(c=>all.some(t=>t.category===c.k));const lg=imgUrl(CONFIG.logoUrl);
   const ncol=Math.max(1,Math.min(groups.reduce((s,g)=>s+g.items.length,0)>0?6:1,Math.floor((b.clientWidth||1100)/290)));
   const cols=packCols(groups,ncol);
