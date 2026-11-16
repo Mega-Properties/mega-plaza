@@ -539,16 +539,16 @@ function fillDirectory(){
   fillFloorFilter();
   const grid=$("#grid");if(!grid)return;
   const all=visible();const counts={};all.forEach(t=>{counts[t.category]=(counts[t.category]||0)+1});
-  $("#chips").innerHTML=`<button type="button" class="chip" data-cat="All" aria-pressed="${S.cat==="All"}">All <small>${all.length}</small></button>`+
-    CATS.filter(c=>counts[c.k]).map(c=>`<button type="button" class="chip" data-cat="${esc(c.k)}" aria-pressed="${S.cat===c.k}"><i style="background:var(${c.v})"></i>${esc(c.k)} <small>${counts[c.k]}</small></button>`).join("");
+  const qOn=!!S.q.trim();$("#chips").innerHTML=`<button type="button" class="chip" data-cat="All" aria-pressed="${qOn||S.cat==="All"}">All <small>${all.length}</small></button>`+
+    CATS.filter(c=>counts[c.k]).map(c=>`<button type="button" class="chip" data-cat="${esc(c.k)}" aria-pressed="${!qOn&&S.cat===c.k}"><i style="background:var(${c.v})"></i>${esc(c.k)} <small>${counts[c.k]}</small></button>`).join("");
   const anyHours=all.some(t=>parseHours(t.hours));
   if(anyHours)$("#chips").insertAdjacentHTML("afterbegin",`<button type="button" class="chip openchip" id="openOnly" aria-pressed="${S.openOnly}"><i style="background:var(--open)"></i>Open now</button>`);
-  $("#chips").querySelectorAll(".chip[data-cat]").forEach(b=>b.addEventListener("click",()=>{S.cat=b.dataset.cat;fillDirectory()}));
+  $("#chips").querySelectorAll(".chip[data-cat]").forEach(b=>b.addEventListener("click",()=>{S.cat=b.dataset.cat;S.q="";const qi=$("#q");if(qi)qi.value="";fillDirectory()}));
   const oo=$("#openOnly");if(oo)oo.addEventListener("click",()=>{S.openOnly=!S.openOnly;fillDirectory()});
   fillFacilities();
   if(!S.loaded){grid.innerHTML=`<div class="empty">Loading shops…</div>`;return}
   const q=S.q.trim().toLowerCase();
-  const list=all.filter(t=>(S.cat==="All"||t.category===S.cat)&&(S.floor==="All"||t.floor===S.floor)&&
+  const list=all.filter(t=>(q||S.cat==="All"||t.category===S.cat)&&(S.floor==="All"||t.floor===S.floor)&&
     (!S.openOnly||openState(t.hours)===true)&&matches(t,q)).sort((a,b)=>a.name.localeCompare(b.name));
   const card=t=>{const c=catOf(t.category);const wa=waLink(t.phone);
     return `<article class="card" style="--cat:var(${c.v})">${logoHTML(t)}
