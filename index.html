@@ -210,6 +210,19 @@ main{position:relative;z-index:1}
 .fac{display:flex;flex-direction:column;font-size:13px;line-height:1.35}
 .fac b{font-size:14px}
 .fac span{color:var(--muted)}
+
+/* while typing a search, hide the filters so results show straight away */
+body.searching .chips, body.searching #floorf, body.searching .dir-head .seg{display:none}
+/* phones: filters take less room */
+@media (max-width:600px){
+  .dir-head{gap:8px}
+  .search{flex:1 1 100%}
+  #floorf{flex:1 1 0;min-width:0;padding:8px 10px}
+  .dir-head .seg button{padding:6px 10px;font-size:12px}
+  .chips{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;margin:0 -16px 14px;padding:0 16px 2px}
+  .chips::-webkit-scrollbar{display:none}
+  .chip{flex:none}
+}
 </style>
 </head>
 <body>
@@ -507,7 +520,8 @@ function show(){
     <div id="facs"></div>
     <div id="grid"></div>
     <div class="qr-strip"><div class="qr-box" id="qrDir"></div><div><strong>Take the directory with you</strong><div class="hint">Scan to open this directory on your phone.</div></div></div>`;
-    $("#q").addEventListener("input",e=>{const was=S.q;S.q=e.target.value;if(S.q.trim()&&!was.trim())S.cat="All";fillDirectory()});
+    $("#q").addEventListener("input",e=>{const was=S.q;S.q=e.target.value;if(S.q.trim()&&!was.trim())S.cat="All";document.body.classList.toggle("searching",!!S.q.trim());fillDirectory()});
+    document.body.classList.toggle("searching",!!S.q.trim());
     $("#floorf").addEventListener("change",e=>{S.floor=e.target.value;fillDirectory()});
     wireSeg(m);drawQR($("#qrDir"),150);
   }else{
@@ -543,7 +557,7 @@ function fillDirectory(){
     CATS.filter(c=>counts[c.k]).map(c=>`<button type="button" class="chip" data-cat="${esc(c.k)}" aria-pressed="${!qOn&&S.cat===c.k}"><i style="background:var(${c.v})"></i>${esc(c.k)} <small>${counts[c.k]}</small></button>`).join("");
   const anyHours=all.some(t=>parseHours(t.hours));
   if(anyHours)$("#chips").insertAdjacentHTML("afterbegin",`<button type="button" class="chip openchip" id="openOnly" aria-pressed="${S.openOnly}"><i style="background:var(--open)"></i>Open now</button>`);
-  $("#chips").querySelectorAll(".chip[data-cat]").forEach(b=>b.addEventListener("click",()=>{S.cat=b.dataset.cat;S.q="";const qi=$("#q");if(qi)qi.value="";fillDirectory()}));
+  $("#chips").querySelectorAll(".chip[data-cat]").forEach(b=>b.addEventListener("click",()=>{S.cat=b.dataset.cat;S.q="";const qi=$("#q");if(qi)qi.value="";document.body.classList.remove("searching");fillDirectory()}));
   const oo=$("#openOnly");if(oo)oo.addEventListener("click",()=>{S.openOnly=!S.openOnly;fillDirectory()});
   fillFacilities();
   if(!S.loaded){grid.innerHTML=`<div class="empty">Loading shops…</div>`;return}
