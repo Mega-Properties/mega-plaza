@@ -277,6 +277,31 @@ body.searching .chips, body.searching #floorf, body.searching .dir-head .seg{dis
 .pill.vac{background:#a52a2a}
 .vacchip[aria-pressed="true"]{background:#a52a2a;border-color:#a52a2a;color:#fff}
 #ed_floor{margin-top:6px}
+
+.pill.new{background:#e0712c;margin-right:4px}
+.newtag{display:inline-block;background:#e0712c;color:#fff;font-size:10px;font-weight:800;padding:1px 6px;border-radius:999px;vertical-align:middle;letter-spacing:.04em}
+.newchip[aria-pressed="true"]{background:#e0712c;border-color:#e0712c;color:#fff}
+.edwarn{color:#8a5a08;background:#fff4dc;border-radius:6px;padding:6px 8px;display:block;flex-basis:100%}
+.staffname{font-size:12px;font-weight:700;color:#3d4f63;white-space:nowrap}
+.board-tools .ghost[aria-pressed="false"]{opacity:.7}
+
+.forgot{background:none;border:0;color:#0a6a9e;text-decoration:underline;font-size:13px;cursor:pointer;justify-self:start;padding:0}
+.pinerr.ok{color:#17703e}
+.stlist{display:grid;gap:8px;margin-bottom:6px}
+.strow{display:flex;justify-content:space-between;align-items:center;gap:10px;border:1px solid #dbe2e8;border-radius:10px;padding:10px 12px}
+.strow.off{opacity:.6}
+.strow small{display:block;color:#5a6a77;font-size:12px}
+.stadmin{background:#0d2b3e;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:999px}
+.stoff{background:#a52a2a;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:999px}
+.stbtns{display:flex;gap:8px;white-space:nowrap}
+.edlink2{background:none;border:0;color:#0a6a9e;text-decoration:underline;cursor:pointer;font-size:13px}
+.edgrid label.chk{display:flex;align-items:center;gap:8px;font-size:13px}
+.edgrid label.chk input{width:auto}
+
+.rechelp{font-size:13px;color:#3d4f63;margin:0;line-height:1.45}
+.stadmin.gm{background:#c27c0e}
+.recrow{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:13px;background:#e9f6ee;color:#17703e;border-radius:8px;padding:8px 12px;margin-bottom:8px}
+.recrow.warn{background:#fff4dc;color:#8a5a08}
 </style>
 </head>
 <body>
@@ -285,7 +310,7 @@ body.searching .chips, body.searching #floorf, body.searching .dir-head .seg{dis
   <span class="hl" id="coLogo"></span>
   <div class="mid">
     <div class="brand"><h1 id="brandName"></h1><p id="brandTag"></p></div>
-    <span class="staffbox" id="staffBox" hidden><button type="button" class="editbtn" id="addBtn">➕ Add tenant</button><a class="sheetlink" id="editBtn" target="_blank" rel="noopener" title="Open the Google Sheet">Sheet</a><button type="button" class="staffexit" id="staffExit" title="Hide the staff button on this device">Exit staff</button></span>
+    <span class="staffbox" id="staffBox" hidden><button type="button" class="editbtn" id="addBtn">➕ Add tenant</button><a class="sheetlink" id="editBtn" target="_blank" rel="noopener" title="Open the Google Sheet">Sheet</a><span class="staffname" id="staffName"></span><button type="button" class="staffexit" id="myPinBtn">My PIN</button><button type="button" class="staffexit" id="staffBtn" hidden>Staff &amp; PINs</button><button type="button" class="staffexit" id="staffExit" title="Hide the staff button on this device">Exit staff</button></span>
     <nav class="tabs" aria-label="Views"><a href="#directory" id="tabDir">Directory</a><a href="#board" id="tabBoard">Board view</a></nav>
   </div>
   <span class="hr" id="mallLogo"></span>
@@ -427,7 +452,7 @@ const CATS=[
   {k:"Education",v:"--c-edu"},{k:"Offices & Agencies",v:"--c-office"},{k:"Services",v:"--c-services"},
   {k:"Other",v:"--c-other"},{k:"Facilities",v:"--c-fac"}];
 const FLOORS=["Ground Floor","Mezzanine Floor",...Array.from({length:15},(_,i)=>ordinal(i+1)+" Floor"),"Basement","Outdoor"];
-const S={showVacant:false,openOnly:false,error:"",tenants:[],loaded:false,error:"",updated:null,view:"directory",group:"floor",q:"",cat:"All",floor:"All"};
+const S={autoScroll:true,newOnly:false,showVacant:false,openOnly:false,error:"",tenants:[],loaded:false,error:"",updated:null,view:"directory",group:"floor",q:"",cat:"All",floor:"All"};
 const $=s=>document.querySelector(s);
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const catOf=k=>CATS.find(c=>c.k===k)||CATS[CATS.length-1];
@@ -461,7 +486,7 @@ function toTenants(text){
   const rows=parseCSV(text);if(!rows.length)return[];
   /* Google sometimes merges the first shop row into the headings ("name Khushi Motors").
      Split it back out so that shop isn't lost. */
-  const LABELS=["name","category","about","floor","shop","phone","hours","status","logo","keywords"];
+  const LABELS=["name","category","about","floor","shop","phone","hours","status","logo","keywords","added"];
   let rescued=null;
   rows[0]=rows[0].map((h,i)=>{const raw=String(h||"").trim();const m=raw.match(/^(\S+)\s+([\s\S]+)$/);
     if(m&&LABELS.includes(m[1].toLowerCase())){(rescued=rescued||rows[0].map(()=>""))[i]=m[2];return m[1]}return raw});
@@ -471,9 +496,9 @@ function toTenants(text){
   const col=(...n)=>head.findIndex(h=>n.some(x=>h===x));
   const col2=(...n)=>{const e=col(...n);return e>=0?e:head.findIndex(h=>n.some(x=>h.includes(x)))};
   const ix={name:col2("name","trading name","shop name","tenant"),category:col2("category"),about:col2("about","nature","description"),floor:col2("floor","level"),
-    shop:col("shop","shop no","shop number","unit"),phone:col2("phone","whatsapp"),hours:col2("hours"),status:col2("status"),logo:col2("logo"),keywords:col2("keywords","tags","search")};
+    shop:col("shop","shop no","shop number","unit"),phone:col2("phone","whatsapp"),hours:col2("hours"),status:col2("status"),logo:col2("logo"),keywords:col2("keywords","tags","search"),added:col2("added","date added")};
   return rows.slice(1).map(r=>{const g=k=>ix[k]>=0?fixText(r[ix[k]]).trim():"";
-    return{name:g("name"),category:matchCat(g("category")),about:g("about"),floor:matchFloor(g("floor")),shop:g("shop"),phone:fixPhone(g("phone")),hours:g("hours"),status:matchStatus(g("status")),logo:imgUrl(g("logo")),keywords:g("keywords"),raw:{name:g("name"),floor:g("floor"),shop:g("shop")}}})
+    return{name:g("name"),category:matchCat(g("category")),about:g("about"),floor:matchFloor(g("floor")),shop:g("shop"),phone:fixPhone(g("phone")),hours:g("hours"),status:matchStatus(g("status")),logo:imgUrl(g("logo")),keywords:g("keywords"),raw:{name:g("name"),floor:g("floor"),shop:g("shop")},added:g("added")}})
     .filter(t=>t.name).map((t,i)=>(t.i=i,t));
 }
 async function load(){
@@ -500,12 +525,13 @@ function paintFooter(){
 }
 /* ---- staff mode: open the page once with ?staff=KEY to show the Edit button on this device ---- */
 async function sha256(t){const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(t));return[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("")}
-function paintStaff(){const box=$("#staffBox");if(!box)return;const ab=$("#addBtn");if(ab){ab.hidden=!CONFIG.uploadUrl;ab.onclick=()=>openEditor(null)}const was=box.hidden;box.hidden=!S.staff;if(was===S.staff&&S.view==="directory")fillDirectory();
+function paintStaff(){const box=$("#staffBox");if(!box)return;const ab=$("#addBtn");if(ab){ab.hidden=!CONFIG.uploadUrl;ab.onclick=()=>openEditor(null)}const sn=$("#staffName");if(sn)sn.textContent=S.staff&&S.staffName?S.staffName:"";const mp=$("#myPinBtn");if(mp)mp.onclick=openMyPin;const sb=$("#staffBtn");if(sb){sb.hidden=!(S.staff&&S.admin);sb.onclick=openStaffManager}const was=box.hidden;box.hidden=!S.staff;if(was===S.staff&&S.view==="directory")fillDirectory();
   const a=$("#editBtn");if(a)a.href=CONFIG.editUrl||"#";}
+function staffLogout(){try{["mp-staff","mp-pin","mp-name","mp-admin","mp-gm"].forEach(k=>localStorage.removeItem(k))}catch(e){}S.staff=false;S.showVacant=false;paintStaff();refresh()}
 function staffInit(){
-  try{S.staff=!!CONFIG.staffKeyHash&&localStorage.getItem("mp-staff")===CONFIG.staffKeyHash}catch(e){S.staff=false}
+  try{S.staff=!!CONFIG.uploadUrl&&localStorage.getItem("mp-staff")==="v3"&&!!localStorage.getItem("mp-pin");S.staffName=localStorage.getItem("mp-name")||"";S.admin=localStorage.getItem("mp-admin")==="1";S.gm=localStorage.getItem("mp-gm")==="1"}catch(e){S.staff=false}
   paintStaff();
-  const x=$("#staffExit");if(x)x.onclick=()=>{try{localStorage.removeItem("mp-staff");localStorage.removeItem("mp-pin")}catch(e){}S.staff=false;paintStaff()};
+  const x=$("#staffExit");if(x)x.onclick=staffLogout;
   // 5 quick taps on the company logo open the PIN box
   let taps=0,timer=null;const logo=$("#coLogo");
   if(logo)logo.addEventListener("click",()=>{taps++;clearTimeout(timer);timer=setTimeout(()=>{taps=0},2500);if(taps>=5){taps=0;openPin()}});
@@ -513,16 +539,23 @@ function staffInit(){
 function openPin(){
   if(S.staff){paintStaff();return}
   let d=$("#pinBox");
-  if(!d){document.body.insertAdjacentHTML("beforeend",`<div class="pinwrap" id="pinBox" role="dialog" aria-modal="true" aria-labelledby="pinTitle"><form class="pincard" id="pinForm"><h2 id="pinTitle">Staff access</h2><label for="pinIn">Enter PIN</label><input id="pinIn" type="password" inputmode="numeric" autocomplete="off" maxlength="12"><p class="pinerr" id="pinErr" aria-live="polite"></p><div class="pinbtns"><button type="button" class="pincancel" id="pinCancel">Cancel</button><button type="submit" class="pinok">Unlock</button></div></form></div>`);
+  if(!d){document.body.insertAdjacentHTML("beforeend",`<div class="pinwrap" id="pinBox" role="dialog" aria-modal="true" aria-labelledby="pinTitle"><form class="pincard" id="pinForm"><h2 id="pinTitle">Staff access</h2><label for="pinIn">Enter PIN</label><input id="pinIn" type="password" inputmode="numeric" autocomplete="off" maxlength="12"><p class="pinerr" id="pinErr" aria-live="polite"></p><button type="button" class="forgot" id="pinForgot">Forgot PIN?</button><div class="pinbtns"><button type="button" class="pincancel" id="pinCancel">Cancel</button><button type="submit" class="pinok">Unlock</button></div></form></div>`);
     d=$("#pinBox");
     $("#pinCancel").onclick=()=>{d.hidden=true};
+    $("#pinForgot").onclick=()=>{d.hidden=true;openRecover()};
     d.addEventListener("click",e=>{if(e.target===d)d.hidden=true});
     $("#pinForm").addEventListener("submit",async e=>{e.preventDefault();const v=$("#pinIn").value.trim();
-      let ok=false;try{ok=!!(window.crypto&&crypto.subtle)&&await sha256(v)===CONFIG.staffKeyHash}catch(err){}
-      if(ok){try{localStorage.setItem("mp-staff",CONFIG.staffKeyHash);localStorage.setItem("mp-pin",v)}catch(err){}S.staff=true;paintStaff();d.hidden=true}
-      else{$("#pinErr").textContent="Incorrect PIN";$("#pinIn").value="";$("#pinIn").focus()}});
+      if(!v)return;const btn=d.querySelector(".pinok");btn.disabled=true;btn.textContent="Checking…";$("#pinErr").textContent="";
+      try{
+        if(!CONFIG.uploadUrl)throw new Error("Staff editing is not set up");
+        const r=await fetch(CONFIG.uploadUrl,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({pin:v,tab:CONFIG.sheetTab,action:"login"})});
+        const res=await r.json();if(!res.ok)throw new Error(res.error||"Incorrect PIN");
+        try{localStorage.setItem("mp-staff","v3");localStorage.setItem("mp-pin",v);localStorage.setItem("mp-name",res.name||"");localStorage.setItem("mp-admin",res.admin?"1":"");localStorage.setItem("mp-gm",res.gm?"1":"")}catch(err){}
+        S.staff=true;S.staffName=res.name||"";S.admin=!!res.admin;S.gm=!!res.gm;paintStaff();refresh();d.hidden=true;toast("Welcome"+(res.name?", "+res.name:""));
+      }catch(err){$("#pinErr").textContent=err.message==="Failed to fetch"?"No connection – try again":err.message;$("#pinIn").value="";$("#pinIn").focus()}
+      btn.disabled=false;btn.textContent="Unlock"});
   }
-  $("#pinErr").textContent="";$("#pinIn").value="";d.hidden=false;setTimeout(()=>$("#pinIn").focus(),30);
+  $("#pinErr").textContent="";$("#pinErr").className="pinerr";$("#pinIn").value="";d.hidden=false;setTimeout(()=>$("#pinIn").focus(),30);
 }
 function paintHeader(){
   paintFooter();
@@ -604,6 +637,8 @@ const SYNONYMS={
   groceries:["supermarket","hypermarket","grocery"],supermarket:["supermarket","hypermarket"],
   toilet:["washroom","toilet"],washroom:["washroom","toilet"],parking:["parking"],lift:["lift","elevator"]
 };
+const NEW_DAYS=30;
+function isNew(t){if(!t.added)return false;const d=new Date(String(t.added).replace(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/,"$3-$2-$1"));if(isNaN(d))return false;const age=(Date.now()-d.getTime())/864e5;return age>=-1&&age<=NEW_DAYS}
 function matches(t,q){
   if(!q)return true;
   const hay=[t.name,t.category,t.about,t.shop,t.floor,t.keywords].join(" ").toLowerCase();
@@ -634,6 +669,8 @@ function show(){
     wireSeg(m);drawQR($("#qrDir"),150);
   }else{
     m.innerHTML=`<div id="note"></div><div class="board-tools">${segHTML()}<button type="button" class="ghost" id="fs">Full screen</button></div><div class="board" id="board"></div>`;
+    $(".board-tools").insertAdjacentHTML("afterbegin",`<button type="button" class="ghost" id="autoScroll" aria-pressed="${S.autoScroll}">${S.autoScroll?"Auto-scroll: on":"Auto-scroll: off"}</button>`);
+    $("#autoScroll").addEventListener("click",()=>{S.autoScroll=!S.autoScroll;const b=$("#autoScroll");b.textContent=S.autoScroll?"Auto-scroll: on":"Auto-scroll: off";b.setAttribute("aria-pressed",S.autoScroll)});
     wireSeg(m);$("#fs").addEventListener("click",()=>{const b=$("#board");try{document.fullscreenElement?document.exitFullscreen():b.requestFullscreen()}catch(e){}});
   }
   refresh();
@@ -669,13 +706,85 @@ async function api(action,payload){
   let pin="";try{pin=localStorage.getItem("mp-pin")||""}catch(e){}
   if(!pin)throw new Error("Unlock staff mode again (tap the logo 5 times)");
   const r=await fetch(CONFIG.uploadUrl,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(Object.assign({pin,tab:CONFIG.sheetTab,action},payload))});
-  const d=await r.json();if(!d.ok)throw new Error(d.error||"Something went wrong");return d}
+  const d=await r.json();if(!d.ok){if(d.auth===false)setTimeout(staffLogout,1500);throw new Error(d.error||"Something went wrong")}return d}
 function applyFields(t,f){
   if("name" in f)t.name=f.name;if("about" in f)t.about=f.about;if("hours" in f)t.hours=f.hours;if("keywords" in f)t.keywords=f.keywords;
   if("category" in f)t.category=matchCat(f.category);if("floor" in f)t.floor=matchFloor(f.floor);if("shop" in f)t.shop=f.shop;
   if("phone" in f)t.phone=fixPhone(f.phone);if("status" in f)t.status=matchStatus(f.status);if("logo" in f)t.logo=imgUrl(f.logo);
   t.raw=t.raw||{};["name","floor","shop"].forEach(k=>{if(k in f)t.raw[k]=f[k]});return t}
 function opts(list,cur){return list.map(v=>`<option ${v===cur?"selected":""}>${esc(v)}</option>`).join("")}
+function modal(id,html){const old=$("#"+id);if(old)old.remove();document.body.insertAdjacentHTML("beforeend",`<div class="pinwrap" id="${id}" role="dialog" aria-modal="true">${html}</div>`);
+  const box=$("#"+id);box.addEventListener("click",e=>{if(e.target===box)box.remove()});return box}
+function openRecover(){
+  const box=modal("recBox",`<form class="pincard" id="recForm"><h2>Forgot PIN?</h2>
+    <p class="rechelp"><b>Staff:</b> ask the GM to give you a new PIN (Staff &amp; PINs).<br><b>GM:</b> enter your recovery code and choose a new PIN.</p>
+    <label for="recCode">GM recovery code</label><input id="recCode" autocomplete="off" autocapitalize="characters">
+    <label for="recPin">New PIN (4–8 digits)</label><input id="recPin" type="password" inputmode="numeric" maxlength="8" autocomplete="new-password">
+    <label for="recPin2">Type it again</label><input id="recPin2" type="password" inputmode="numeric" maxlength="8" autocomplete="new-password">
+    <p class="pinerr" id="recErr" aria-live="polite"></p><div class="pinbtns"><button type="button" class="pincancel" id="recCancel">Cancel</button><button type="submit" class="pinok">Reset GM PIN</button></div></form>`);
+  $("#recCancel").onclick=()=>box.remove();setTimeout(()=>$("#recCode").focus(),30);
+  $("#recForm").addEventListener("submit",async e=>{e.preventDefault();const er=$("#recErr"),code=$("#recCode").value.trim(),a=$("#recPin").value.trim(),b=$("#recPin2").value.trim();
+    if(!code){er.textContent="Enter the recovery code";return}if(!/^\d{4,8}$/.test(a)){er.textContent="PIN must be 4 to 8 digits";return}if(a!==b){er.textContent="The two PINs don't match";return}
+    try{const r=await fetch(CONFIG.uploadUrl,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({action:"recover",tab:CONFIG.sheetTab,code,newPin:a})});
+      const res=await r.json();if(!res.ok)throw new Error(res.error||"Could not reset");box.remove();toast("GM PIN reset – unlock with the new PIN");openPin()}
+    catch(x){er.textContent=x.message==="Failed to fetch"?"No connection – try again":x.message}});
+}
+function openRecoverySetup(){
+  const box=modal("rsBox",`<form class="pincard" id="rsForm"><h2>GM recovery code</h2>
+    <p class="rechelp">If you ever forget your PIN, this code lets you set a new one from "Forgot PIN?". Choose something only you know (at least 8 characters) and keep it somewhere safe, e.g. written in your diary.</p>
+    <label for="rsCode">Recovery code</label><input id="rsCode" autocomplete="off" autocapitalize="characters" placeholder="e.g. MEGA-HOUSE-2026">
+    <label for="rsCode2">Type it again</label><input id="rsCode2" autocomplete="off" autocapitalize="characters">
+    <p class="pinerr" id="rsErr" aria-live="polite"></p><div class="pinbtns"><button type="button" class="pincancel" id="rsCancel">Cancel</button><button type="submit" class="pinok">Save code</button></div></form>`);
+  $("#rsCancel").onclick=()=>box.remove();setTimeout(()=>$("#rsCode").focus(),30);
+  $("#rsForm").addEventListener("submit",async e=>{e.preventDefault();const er=$("#rsErr"),a=$("#rsCode").value.trim(),b=$("#rsCode2").value.trim();
+    if(a.length<8){er.textContent="Use at least 8 characters";return}if(a.toUpperCase()!==b.toUpperCase()){er.textContent="The two codes don't match";return}
+    try{await api("setRecovery",{code:a});box.remove();toast("Recovery code saved");const sb=$("#staffBox2");if(sb){sb.remove();openStaffManager()}}catch(x){er.textContent=x.message}});
+}
+function openMyPin(){
+  const box=modal("myPinBox",`<form class="pincard" id="mpForm"><h2>Change my PIN</h2>
+    <label for="mpNew">New PIN (4–8 digits)</label><input id="mpNew" type="password" inputmode="numeric" maxlength="8" autocomplete="new-password">
+    <label for="mpNew2">Type it again</label><input id="mpNew2" type="password" inputmode="numeric" maxlength="8" autocomplete="new-password">
+    <p class="pinerr" id="mpErr" aria-live="polite"></p><div class="pinbtns"><button type="button" class="pincancel" id="mpCancel">Cancel</button><button type="submit" class="pinok">Save PIN</button></div></form>`);
+  $("#mpCancel").onclick=()=>box.remove();setTimeout(()=>$("#mpNew").focus(),30);
+  $("#mpForm").addEventListener("submit",async e=>{e.preventDefault();const a=$("#mpNew").value.trim(),b=$("#mpNew2").value.trim(),er=$("#mpErr");
+    if(!/^\d{4,8}$/.test(a)){er.textContent="PIN must be 4 to 8 digits";return}if(a!==b){er.textContent="The two PINs don't match";return}
+    try{await api("changeMyPin",{newPin:a});try{localStorage.setItem("mp-pin",a)}catch(x){}box.remove();toast("Your PIN has been changed")}catch(x){er.textContent=x.message}});
+}
+async function openStaffManager(){
+  const box=modal("staffBox2",`<div class="edcard"><h2>Staff &amp; PINs</h2><div id="stRec"></div><div id="stList" class="stlist">Loading…</div>
+    <p class="pinerr" id="stErr" aria-live="polite"></p><div class="edbtns"><button type="button" class="pinok" id="stAdd">➕ Add person</button><span class="sp"></span><button type="button" class="pincancel" id="stClose">Close</button></div></div>`);
+  $("#stClose").onclick=()=>box.remove();
+  let data=null;const er=$("#stErr");
+  const mallsText=m=>m.includes("*")?"All malls":m.join(", ");
+  function render(){
+    const rec=$("#stRec");if(rec)rec.innerHTML=data.gm?`<div class="recrow ${data.recoverySet?"":"warn"}"><span>${data.recoverySet?"✔ Recovery code is set":"⚠ No recovery code yet – set one so you can reset your PIN if you forget it"}</span><button type="button" class="edlink2" id="stRecBtn">${data.recoverySet?"Change":"Set now"}</button></div>`:"";
+    const rb=$("#stRecBtn");if(rb)rb.onclick=openRecoverySetup;
+    $("#stList").innerHTML=data.staff.map(p=>`<div class="strow ${p.active?"":"off"}"><div><b>${esc(p.name)}</b>${p.gm?' <span class="stadmin gm">GM</span>':(p.admin?' <span class="stadmin">admin</span>':"")}${p.active?"":' <span class="stoff">disabled</span>'}<small>${esc(mallsText(p.malls))}</small></div>
+      <div class="stbtns"><button type="button" class="edlink2" data-edit="${p.id}">Edit</button>${p.id!==data.me&&!p.gm?`<button type="button" class="edlink" data-del="${p.id}">Remove</button>`:""}</div></div>`).join("");
+    $("#stList").querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>form(data.staff.find(x=>x.id===b.dataset.edit)));
+    $("#stList").querySelectorAll("[data-del]").forEach(b=>b.onclick=async()=>{if(!b.dataset.sure){b.dataset.sure="1";b.textContent="Tap again to remove";return}
+      try{data=await api("staffDelete",{id:b.dataset.del});render();toast("Removed")}catch(x){er.textContent=x.message}});
+  }
+  function form(p){
+    const isNew=!p;p=p||{name:"",malls:[CONFIG.sheetTab],admin:false,active:true};
+    $("#stList").innerHTML=`<form id="stForm" class="edgrid">
+      <label class="full">Name<input id="st_name" required value="${esc(p.name)}" placeholder="e.g. Grace (Mega City reception)"></label>
+      <label>${isNew?"PIN (4–8 digits)":"New PIN (leave empty to keep)"}<input id="st_pin" inputmode="numeric" maxlength="8" autocomplete="off"></label>
+      <label>Can edit<select id="st_malls"><option value="*" ${p.malls.includes("*")?"selected":""}>All malls</option>${data.tabs.map(t=>`<option ${!p.malls.includes("*")&&p.malls[0]===t?"selected":""}>${esc(t)}</option>`).join("")}</select></label>
+      <label class="chk"><input type="checkbox" id="st_admin" ${p.admin?"checked":""}> Admin (can manage staff &amp; PINs)</label>
+      <label class="chk"><input type="checkbox" id="st_active" ${p.active?"checked":""}> Active</label>
+      <div class="full edbtns"><button type="button" class="pincancel" id="stBack">Back</button><span class="sp"></span><button type="submit" class="pinok">${isNew?"Add person":"Save"}</button></div></form>`;
+    $("#stBack").onclick=render;$("#st_name").focus();
+    $("#stForm").addEventListener("submit",async e=>{e.preventDefault();er.textContent="";
+      const pin=$("#st_pin").value.trim();if(isNew&&!pin){er.textContent="Choose a PIN for this person";return}
+      if(pin&&!/^\d{4,8}$/.test(pin)){er.textContent="PIN must be 4 to 8 digits";return}
+      const m=$("#st_malls").value;
+      try{data=await api("staffSave",{staff:{id:p.id,name:$("#st_name").value.trim(),pin,malls:[m],admin:$("#st_admin").checked,active:$("#st_active").checked}});render();toast(isNew?"Person added":"Saved")}
+      catch(x){er.textContent=x.message}});
+  }
+  $("#stAdd").onclick=()=>{if(data)form(null)};
+  try{data=await api("staffList",{});render()}catch(x){$("#stList").textContent="";er.textContent=x.message}
+}
 function openEditor(t){
   const isNew=!t;const all=S.tenants;
   const floors=[...new Set(all.map(x=>x.floor).filter(Boolean))].sort((a,b)=>floorRank(a)-floorRank(b));
@@ -708,7 +817,13 @@ function openEditor(t){
   const close=()=>box.remove();
   $("#edCancel").onclick=close;box.addEventListener("click",e=>{if(e.target===box)close()});
   setTimeout(()=>$("#ed_name").focus(),30);
-  $("#ed_logo").onchange=e=>{logoFile=e.target.files[0]||null;removeLogo=false;if(logoFile){$("#edPrev").innerHTML=`<div class="logo"><img src="${URL.createObjectURL(logoFile)}" alt=""></div>`;$("#edLogoNote").textContent="New logo will be saved"}};
+  $("#ed_logo").onchange=e=>{logoFile=e.target.files[0]||null;removeLogo=false;const note=$("#edLogoNote");note.className="edhint";
+    if(!logoFile)return;const u=URL.createObjectURL(logoFile);$("#edPrev").innerHTML=`<div class="logo"><img src="${u}" alt=""></div>`;note.textContent="New logo will be saved";
+    const im=new Image();im.onload=()=>{const w=im.naturalWidth,h=im.naturalHeight,warn=[];
+      if(Math.min(w,h)<150)warn.push(`it is small (${w}×${h} px) and may look blurry`);
+      if(w/h>3||h/w>3)warn.push("it is very wide or tall, so it will look tiny in the square");
+      if(logoFile.size<4000)warn.push("the file is very small, it may be a low-quality copy");
+      if(warn.length){note.className="edhint edwarn";note.textContent="⚠ This logo will be saved, but "+warn.join("; ")+". A bigger, clearer file from the tenant is better."}};im.src=u};
   const rm=$("#edRmLogo");if(rm)rm.onclick=()=>{removeLogo=true;logoFile=null;$("#edPrev").innerHTML="";$("#edLogoNote").textContent="Logo will be removed"};
   const fs=$("#ed_floorsel"),fi=$("#ed_floor");
   fs.onchange=()=>{if(fs.value==="__other"){fi.hidden=false;fi.value="";fi.focus()}else{fi.hidden=true;fi.value=fs.value}};
@@ -744,15 +859,18 @@ function fillDirectory(){
   if(S.staff&&nVac)$("#chips").insertAdjacentHTML("beforeend",`<button type="button" class="chip vacchip" id="showVac" aria-pressed="${S.showVacant}">${S.showVacant?"Hide":"Show"} vacant <small>${nVac}</small></button>`);
   const sv=$("#showVac");if(sv)sv.addEventListener("click",()=>{S.showVacant=!S.showVacant;fillDirectory()});
   $("#chips").querySelectorAll(".chip[data-cat]").forEach(b=>b.addEventListener("click",()=>{S.cat=b.dataset.cat;S.q="";const qi=$("#q");if(qi)qi.value="";document.body.classList.remove("searching");fillDirectory()}));
+  const nNew=all.filter(isNew).length;
+  if(nNew)$("#chips").insertAdjacentHTML("afterbegin",`<button type="button" class="chip newchip" id="newOnly" aria-pressed="${S.newOnly}"><i style="background:#e0712c"></i>New <small>${nNew}</small></button>`);
+  const no=$("#newOnly");if(no)no.addEventListener("click",()=>{S.newOnly=!S.newOnly;fillDirectory()});
   const oo=$("#openOnly");if(oo)oo.addEventListener("click",()=>{S.openOnly=!S.openOnly;fillDirectory()});
   fillFacilities();
   if(!S.loaded){grid.innerHTML=`<div class="empty">Loading shops…</div>`;return}
   const q=S.q.trim().toLowerCase();
   const list=all.filter(t=>(q||S.cat==="All"||t.category===S.cat)&&(S.floor==="All"||t.floor===S.floor)&&
-    (!S.openOnly||openState(t.hours)===true)&&matches(t,q)).sort((a,b)=>a.name.localeCompare(b.name));
+    (!S.openOnly||openState(t.hours)===true)&&(!S.newOnly||isNew(t))&&matches(t,q)).sort((a,b)=>a.name.localeCompare(b.name));
   const card=t=>{const c=catOf(t.category);const wa=waLink(t.phone);
     return `<article class="card" style="--cat:var(${c.v})">${logoHTML(t)}
-      <div>${t.status==="Coming Soon"?`<span class="pill">Coming soon</span>`:""}${t.status==="Vacant"?`<span class="pill vac">Vacant – hidden from public</span>`:""}<h3>${esc(t.name)}</h3><div class="meta">${esc(t.about||c.k)}${t.hours?" · "+esc(t.hours):""}</div>${(()=>{const o=openInfo(t.hours);return !o?"":`<span class="oc ${o.open?"is-open":"is-closed"}">${o.label}</span>`})()}
+      <div>${isNew(t)&&t.status!=="Vacant"?`<span class="pill new">New</span>`:""}${t.status==="Coming Soon"?`<span class="pill">Coming soon</span>`:""}${t.status==="Vacant"?`<span class="pill vac">Vacant – hidden from public</span>`:""}<h3>${esc(t.name)}</h3><div class="meta">${esc(t.about||c.k)}${t.hours?" · "+esc(t.hours):""}</div>${(()=>{const o=openInfo(t.hours);return !o?"":`<span class="oc ${o.open?"is-open":"is-closed"}">${o.label}</span>`})()}
       <div class="where">${t.floor?`<span>${esc(t.floor)}</span>`:""}${t.shop?`<span>${/\d/.test(t.shop)?"Shop ":""}${esc(t.shop)}</span>`:""}</div>
       ${t.phone?`<div class="actions"><a href="tel:${esc(t.phone.replace(/\s/g,""))}">Call ${esc(t.phone)}</a>${wa?`<a href="${wa}" target="_blank" rel="noopener">WhatsApp</a>`:""}</div>`:""}${S.staff&&CONFIG.uploadUrl?`<button type="button" class="upl" data-i="${t.i}">✏️ Edit</button>`:""}</div></article>`};
   grid.innerHTML=!list.length?`<div class="empty">${S.tenants.length?(S.openOnly?"No shops are open right now that match your search.":"No shops match your search."):"No shops listed yet."}</div>`:
@@ -793,7 +911,7 @@ function fillBoard(){
       <div class="bh-title"><h2>${esc(CONFIG.mallName||"Mall Directory")}</h2><p>Karibu · Welcome · Tenant directory</p></div>
       <div class="bh-logo">${logoImg(CONFIG.logoUrl,CONFIG.mallName)}</div></div>
     <div class="board-cols" style="grid-template-columns:repeat(${cols.length||1},minmax(0,1fr))">${groups.length?cols.map(col=>`<div class="bcol">${col.map(g=>`<section class="bcat" style="--cat:${g.color}"><h3><i></i>${esc(g.title)}${g.cont?" <small>(continued)</small>":""}</h3>
-      ${g.items.map(t=>`<div class="brow" style="--cat:var(${catOf(t.category).v})">${logoHTML(t,"mini")}<b>${esc(t.name)}${t.status==="Coming Soon"?' <small class="hint">(coming soon)</small>':""}</b><em>${esc(g.tag(t))}</em></div>`).join("")}
+      ${g.items.map(t=>`<div class="brow" style="--cat:var(${catOf(t.category).v})">${logoHTML(t,"mini")}<b>${esc(t.name)}${isNew(t)?' <span class="newtag">NEW</span>':""}${t.status==="Coming Soon"?' <small class="hint">(coming soon)</small>':""}</b><em>${esc(g.tag(t))}</em></div>`).join("")}
     </section>`).join("")}</div>`).join(""):`<div class="empty" style="margin:20px">${S.loaded?"No shops listed yet.":"Loading shops…"}</div>`}</div>
     ${S.group==="floor"&&used.length?`<div class="legend">${used.map(c=>`<span><i style="background:var(${c.v})"></i>${esc(c.k)}</span>`).join("")}</div>`:""}
     <div class="board-foot"><div class="scan"><div class="qr-box" id="qrBoard"></div><div><strong>Can't find it? Scan here</strong><div class="hint">Search every shop on your phone</div></div></div>
@@ -803,6 +921,20 @@ function fillBoard(){
 
 }
 
+/* TV board: slowly scroll down, pause at the bottom, return to the top. Pauses for 30 s after anyone touches it. */
+(function autoScroller(){
+  let last=performance.now(),pausedUntil=performance.now()+8000,pos=null;
+  const hold=()=>{pausedUntil=performance.now()+30000};
+  ["wheel","touchstart","keydown","mousedown"].forEach(ev=>window.addEventListener(ev,hold,{passive:true}));
+  function target(){const b=$("#board");if(b&&document.fullscreenElement===b)return b;return document.scrollingElement}
+  function step(now){const dt=Math.min(100,now-last);last=now;
+    if(S.view==="board"&&S.autoScroll&&now>pausedUntil){const el=target(),max=el.scrollHeight-el.clientHeight;
+      if(max>40){if(pos===null||Math.abs(pos-el.scrollTop)>4)pos=el.scrollTop;
+        if(pos>=max-1){pausedUntil=now+6000;setTimeout(()=>{el.scrollTop=0;pos=0;pausedUntil=performance.now()+8000},5000)}
+        else{pos=Math.min(max,pos+dt*0.03);el.scrollTop=pos}}}
+    requestAnimationFrame(step)}
+  requestAnimationFrame(step);
+})();
 window.addEventListener("hashchange",show);
 staffInit();
 show();
