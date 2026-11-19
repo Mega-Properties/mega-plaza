@@ -21,9 +21,9 @@ const CONFIG = {
   contactPhone: "0700400500",
   contactEmail: "marketing@shiloahmega.com, marketing-plaza@shiloahmega.com",                  // several? separate with commas
   watermark: true,                    // faint mall logo behind the page
-  // Staff "Edit tenants" button: only shown on devices unlocked with the staff link
+  // Staff "Edit tenants" button: tap the company logo 5 times and enter the PIN
   editUrl: "https://docs.google.com/spreadsheets/d/14xt9tws9H6iMtM5Kdwru3LwVhVpqSQk5AvuMzIYjXuQ/edit",
-  staffKeyHash: "de72c009dffca5a3ea88c80822a717c973407c7de5b7d4953658457e15efa9d6",
+  staffKeyHash: "dafff407d7450f62b0dd0c413f9f0745d70071b8ba4d731d093804be0502184e",   // PIN for staff mode (scrambled)
   // Your Google Sheet, published as CSV (File > Share > Publish to web > CSV). Leave "" to use the list built into this file.
   sheetCsvUrl: "https://docs.google.com/spreadsheets/d/14xt9tws9H6iMtM5Kdwru3LwVhVpqSQk5AvuMzIYjXuQ/gviz/tq?tqx=out:csv&headers=1&sheet=Mega%20Plaza",
   // Link the QR code opens. Leave "" to use this page's own address.
@@ -234,6 +234,17 @@ body.searching .chips, body.searching #floorf, body.searching .dir-head .seg{dis
 .editbtn:hover{background:#a8690a}
 .staffexit{border:0;background:none;color:#5a6a77;font-size:12px;text-decoration:underline;cursor:pointer;padding:4px}
 @media (max-width:600px){.editbtn{font-size:12px;padding:5px 10px}}
+
+.pinwrap{position:fixed;inset:0;z-index:50;background:rgba(10,20,30,.55);display:grid;place-items:center;padding:16px}
+.pinwrap[hidden]{display:none}
+.pincard{background:#fff;color:#13202a;border-radius:14px;padding:22px;width:min(320px,100%);display:grid;gap:10px;box-shadow:0 10px 40px rgba(0,0,0,.3)}
+.pincard h2{font-size:18px;margin:0}
+.pincard label{font-size:13px;font-weight:600}
+.pincard input{font-size:22px;letter-spacing:.3em;text-align:center;padding:10px;border:1px solid #cfd8df;border-radius:8px}
+.pinerr{color:#c43c3c;font-size:13px;margin:0;min-height:1em}
+.pinbtns{display:flex;gap:8px;justify-content:flex-end}
+.pinok{background:#0d2b3e;color:#fff;border:0;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer}
+.pincancel{background:none;border:1px solid #cfd8df;border-radius:8px;padding:9px 14px;cursor:pointer}
 </style>
 </head>
 <body>
@@ -459,18 +470,27 @@ function paintFooter(){
 async function sha256(t){const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(t));return[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("")}
 function paintStaff(){const box=$("#staffBox");if(!box)return;box.hidden=!S.staff;
   const a=$("#editBtn");if(a)a.href=CONFIG.editUrl||"#";}
-async function staffInit(){
-  try{
-    const u=new URL(location.href);const k=u.searchParams.get("staff");
-    if(k!==null){
-      if(k==="off")localStorage.removeItem("mp-staff");
-      else if(CONFIG.staffKeyHash&&window.crypto&&crypto.subtle&&await sha256(k)===CONFIG.staffKeyHash)localStorage.setItem("mp-staff",CONFIG.staffKeyHash);
-      u.searchParams.delete("staff");history.replaceState(null,"",u.pathname+u.search+u.hash);   // keep the key out of the address bar
-    }
-    S.staff=!!CONFIG.staffKeyHash&&localStorage.getItem("mp-staff")===CONFIG.staffKeyHash;
-  }catch(e){S.staff=false}
+function staffInit(){
+  try{S.staff=!!CONFIG.staffKeyHash&&localStorage.getItem("mp-staff")===CONFIG.staffKeyHash}catch(e){S.staff=false}
   paintStaff();
   const x=$("#staffExit");if(x)x.onclick=()=>{try{localStorage.removeItem("mp-staff")}catch(e){}S.staff=false;paintStaff()};
+  // 5 quick taps on the company logo open the PIN box
+  let taps=0,timer=null;const logo=$("#coLogo");
+  if(logo)logo.addEventListener("click",()=>{taps++;clearTimeout(timer);timer=setTimeout(()=>{taps=0},2500);if(taps>=5){taps=0;openPin()}});
+}
+function openPin(){
+  if(S.staff){paintStaff();return}
+  let d=$("#pinBox");
+  if(!d){document.body.insertAdjacentHTML("beforeend",`<div class="pinwrap" id="pinBox" role="dialog" aria-modal="true" aria-labelledby="pinTitle"><form class="pincard" id="pinForm"><h2 id="pinTitle">Staff access</h2><label for="pinIn">Enter PIN</label><input id="pinIn" type="password" inputmode="numeric" autocomplete="off" maxlength="12"><p class="pinerr" id="pinErr" aria-live="polite"></p><div class="pinbtns"><button type="button" class="pincancel" id="pinCancel">Cancel</button><button type="submit" class="pinok">Unlock</button></div></form></div>`);
+    d=$("#pinBox");
+    $("#pinCancel").onclick=()=>{d.hidden=true};
+    d.addEventListener("click",e=>{if(e.target===d)d.hidden=true});
+    $("#pinForm").addEventListener("submit",async e=>{e.preventDefault();const v=$("#pinIn").value.trim();
+      let ok=false;try{ok=!!(window.crypto&&crypto.subtle)&&await sha256(v)===CONFIG.staffKeyHash}catch(err){}
+      if(ok){try{localStorage.setItem("mp-staff",CONFIG.staffKeyHash)}catch(err){}S.staff=true;paintStaff();d.hidden=true}
+      else{$("#pinErr").textContent="Incorrect PIN";$("#pinIn").value="";$("#pinIn").focus()}});
+  }
+  $("#pinErr").textContent="";$("#pinIn").value="";d.hidden=false;setTimeout(()=>$("#pinIn").focus(),30);
 }
 function paintHeader(){
   paintFooter();
