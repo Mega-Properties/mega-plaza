@@ -273,6 +273,10 @@ body.searching .chips, body.searching #floorf, body.searching .dir-head .seg{dis
 .edbtns .sp{flex:1}
 .edvacant{background:#fdecec;color:#a52a2a;border:1px solid #f3c2c2;border-radius:8px;padding:9px 12px;font-weight:700;cursor:pointer}
 @media (max-width:600px){.edgrid{grid-template-columns:1fr}.edcard{padding:16px}}
+
+.pill.vac{background:#a52a2a}
+.vacchip[aria-pressed="true"]{background:#a52a2a;border-color:#a52a2a;color:#fff}
+#ed_floor{margin-top:6px}
 </style>
 </head>
 <body>
@@ -423,7 +427,7 @@ const CATS=[
   {k:"Education",v:"--c-edu"},{k:"Offices & Agencies",v:"--c-office"},{k:"Services",v:"--c-services"},
   {k:"Other",v:"--c-other"},{k:"Facilities",v:"--c-fac"}];
 const FLOORS=["Ground Floor","Mezzanine Floor",...Array.from({length:15},(_,i)=>ordinal(i+1)+" Floor"),"Basement","Outdoor"];
-const S={openOnly:false,error:"",tenants:[],loaded:false,error:"",updated:null,view:"directory",group:"floor",q:"",cat:"All",floor:"All"};
+const S={showVacant:false,openOnly:false,error:"",tenants:[],loaded:false,error:"",updated:null,view:"directory",group:"floor",q:"",cat:"All",floor:"All"};
 const $=s=>document.querySelector(s);
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const catOf=k=>CATS.find(c=>c.k===k)||CATS[CATS.length-1];
@@ -535,7 +539,7 @@ function segHTML(){return `<div class="seg" role="group" aria-label="Group shops
 function wireSeg(root){root.querySelectorAll("[data-group]").forEach(b=>b.addEventListener("click",()=>{S.group=b.dataset.group;
   root.querySelectorAll("[data-group]").forEach(x=>x.setAttribute("aria-pressed",x.dataset.group===S.group?"true":"false"));refresh()}))}
 function floorGroups(list){const out=[];[...list].sort(byFloor).forEach(t=>{let g=out.find(x=>x.f===t.floor);if(!g){g={f:t.floor,items:[]};out.push(g)}g.items.push(t)});return out}
-const visibleAll=()=>S.tenants.filter(t=>t.status!=="Vacant");
+const visibleAll=()=>S.tenants.filter(t=>t.status!=="Vacant"||(S.staff&&S.showVacant));
 const visible=()=>visibleAll().filter(t=>t.category!=="Facilities");
 const facilities=()=>visibleAll().filter(t=>t.category==="Facilities");
 
@@ -647,7 +651,7 @@ function applyFields(t,f){
 function opts(list,cur){return list.map(v=>`<option ${v===cur?"selected":""}>${esc(v)}</option>`).join("")}
 function openEditor(t){
   const isNew=!t;const all=S.tenants;
-  const floors=[...new Set(FLOORS.filter(f=>all.some(x=>x.floor===f)).concat(all.map(x=>x.floor)).filter(Boolean))];
+  const floors=[...new Set(all.map(x=>x.floor).filter(Boolean))].sort((a,b)=>floorRank(a)-floorRank(b));
   const shops=[...new Set(all.map(x=>x.shop).filter(Boolean))].sort();
   const v=t?{name:t.raw.name||t.name,category:t.category,about:t.about||"",floor:t.raw.floor||t.floor,shop:t.raw.shop||"",phone:t.phone||"",hours:t.hours||"",status:t.status||"Open",keywords:t.keywords||""}
            :{name:"",category:"Other",about:"",floor:floors[0]||"Ground Floor",shop:"",phone:"",hours:"",status:"Open",keywords:""};
@@ -660,7 +664,7 @@ function openEditor(t){
      <label>Category<select id="ed_category">${opts(CATS.map(c=>c.k),v.category)}</select></label>
      <label>Status<select id="ed_status">${opts(["Open","Coming Soon","Vacant"],v.status)}</select></label>
      <label class="full">What they do<input id="ed_about" value="${esc(v.about)}" placeholder="e.g. Pharmacy, Men's suits"></label>
-     <label>Floor<input id="ed_floor" list="ed_floors" value="${esc(v.floor)}"><datalist id="ed_floors">${floors.map(f=>`<option value="${esc(f)}">`).join("")}</datalist></label>
+     <label>Floor<select id="ed_floorsel">${opts(floors.includes(v.floor)?floors:floors.concat(v.floor?[v.floor]:[]),v.floor)}<option value="__other">Other (type a new floor)…</option></select><input id="ed_floor" value="${esc(v.floor)}" placeholder="e.g. 3rd Floor" hidden></label>
      <label>Location / shop no.<input id="ed_shop" list="ed_shops" value="${esc(v.shop)}" placeholder="e.g. Wing A, G-12"><datalist id="ed_shops">${shops.map(f=>`<option value="${esc(f)}">`).join("")}</datalist></label>
      <label>Phone / WhatsApp<input id="ed_phone" inputmode="tel" value="${esc(v.phone)}" placeholder="07xx xxx xxx"></label>
      <label>Opening hours<input id="ed_hours" value="${esc(v.hours)}" placeholder="8am - 9pm"></label>
@@ -679,6 +683,8 @@ function openEditor(t){
   setTimeout(()=>$("#ed_name").focus(),30);
   $("#ed_logo").onchange=e=>{logoFile=e.target.files[0]||null;removeLogo=false;if(logoFile){$("#edPrev").innerHTML=`<div class="logo"><img src="${URL.createObjectURL(logoFile)}" alt=""></div>`;$("#edLogoNote").textContent="New logo will be saved"}};
   const rm=$("#edRmLogo");if(rm)rm.onclick=()=>{removeLogo=true;logoFile=null;$("#edPrev").innerHTML="";$("#edLogoNote").textContent="Logo will be removed"};
+  const fs=$("#ed_floorsel"),fi=$("#ed_floor");
+  fs.onchange=()=>{if(fs.value==="__other"){fi.hidden=false;fi.value="";fi.focus()}else{fi.hidden=true;fi.value=fs.value}};
   const busy=on=>{box.querySelectorAll("button,input,select").forEach(x=>x.disabled=on);$("#edSave").textContent=on?"Saving…":(isNew?"Add tenant":"Save")};
   const read=()=>{const f={};["name","category","about","floor","shop","phone","hours","status","keywords"].forEach(k=>f[k]=$("#ed_"+k).value.trim());return f};
   async function save(fields){
@@ -707,6 +713,9 @@ function fillDirectory(){
     CATS.filter(c=>counts[c.k]).map(c=>`<button type="button" class="chip" data-cat="${esc(c.k)}" aria-pressed="${!qOn&&S.cat===c.k}"><i style="background:var(${c.v})"></i>${esc(c.k)} <small>${counts[c.k]}</small></button>`).join("");
   const anyHours=all.some(t=>parseHours(t.hours));
   if(anyHours)$("#chips").insertAdjacentHTML("afterbegin",`<button type="button" class="chip openchip" id="openOnly" aria-pressed="${S.openOnly}"><i style="background:var(--open)"></i>Open now</button>`);
+  const nVac=S.tenants.filter(t=>t.status==="Vacant").length;
+  if(S.staff&&nVac)$("#chips").insertAdjacentHTML("beforeend",`<button type="button" class="chip vacchip" id="showVac" aria-pressed="${S.showVacant}">${S.showVacant?"Hide":"Show"} vacant <small>${nVac}</small></button>`);
+  const sv=$("#showVac");if(sv)sv.addEventListener("click",()=>{S.showVacant=!S.showVacant;fillDirectory()});
   $("#chips").querySelectorAll(".chip[data-cat]").forEach(b=>b.addEventListener("click",()=>{S.cat=b.dataset.cat;S.q="";const qi=$("#q");if(qi)qi.value="";document.body.classList.remove("searching");fillDirectory()}));
   const oo=$("#openOnly");if(oo)oo.addEventListener("click",()=>{S.openOnly=!S.openOnly;fillDirectory()});
   fillFacilities();
@@ -716,7 +725,7 @@ function fillDirectory(){
     (!S.openOnly||openState(t.hours)===true)&&matches(t,q)).sort((a,b)=>a.name.localeCompare(b.name));
   const card=t=>{const c=catOf(t.category);const wa=waLink(t.phone);
     return `<article class="card" style="--cat:var(${c.v})">${logoHTML(t)}
-      <div>${t.status==="Coming Soon"?`<span class="pill">Coming soon</span>`:""}<h3>${esc(t.name)}</h3><div class="meta">${esc(t.about||c.k)}${t.hours?" · "+esc(t.hours):""}</div>${(()=>{const o=openState(t.hours);return o===null?"":`<span class="oc ${o?"is-open":"is-closed"}">${o?"Open now":"Closed now"}</span>`})()}
+      <div>${t.status==="Coming Soon"?`<span class="pill">Coming soon</span>`:""}${t.status==="Vacant"?`<span class="pill vac">Vacant – hidden from public</span>`:""}<h3>${esc(t.name)}</h3><div class="meta">${esc(t.about||c.k)}${t.hours?" · "+esc(t.hours):""}</div>${(()=>{const o=openState(t.hours);return o===null?"":`<span class="oc ${o?"is-open":"is-closed"}">${o?"Open now":"Closed now"}</span>`})()}
       <div class="where">${t.floor?`<span>${esc(t.floor)}</span>`:""}${t.shop?`<span>${/\d/.test(t.shop)?"Shop ":""}${esc(t.shop)}</span>`:""}</div>
       ${t.phone?`<div class="actions"><a href="tel:${esc(t.phone.replace(/\s/g,""))}">Call ${esc(t.phone)}</a>${wa?`<a href="${wa}" target="_blank" rel="noopener">WhatsApp</a>`:""}</div>`:""}${S.staff&&CONFIG.uploadUrl?`<button type="button" class="upl" data-i="${t.i}">✏️ Edit</button>`:""}</div></article>`};
   grid.innerHTML=!list.length?`<div class="empty">${S.tenants.length?(S.openOnly?"No shops are open right now that match your search.":"No shops match your search."):"No shops listed yet."}</div>`:
