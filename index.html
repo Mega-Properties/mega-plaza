@@ -555,8 +555,35 @@ function parseHours(h){h=String(h||"").toLowerCase().replace(/\s+/g," ").trim();
   if(!m[3]&&m[6]==="pm"&&o>=c)o-=12*60;               // "8-9pm"
   if(c===0)c=24*60;
   return{o,c};}
-function openState(h,now=new Date()){const p=parseHours(h);if(!p)return null;if(p.always)return true;if(p.closed)return false;
-  const x=now.getHours()*60+now.getMinutes();return p.o<=p.c?(x>=p.o&&x<p.c):(x>=p.o||x<p.c)}
+/* Day-aware hours: "8am-9pm, Thursday closed", "Mon-Fri 8am-6pm; Sat 9am-2pm; Sun closed", "Closed on Sundays" */
+const DAYRX=/\b(mon(?:day)?|tue(?:s|sday)?|wed(?:nesday)?|thu(?:r|rs|rsday)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?)s?\b/g;
+const DAYIDX={mon:1,tue:2,wed:3,thu:4,fri:5,sat:6,sun:0};
+function daysIn(seg){seg=seg.toLowerCase();const out=new Set();
+  if(/weekdays?/.test(seg))[1,2,3,4,5].forEach(d=>out.add(d));
+  if(/weekends?/.test(seg))[0,6].forEach(d=>out.add(d));
+  if(/(daily|every ?day|all week|mon(day)?\s*(-|–|to)\s*sun(day)?)/.test(seg))[0,1,2,3,4,5,6].forEach(d=>out.add(d));
+  const found=[...seg.matchAll(DAYRX)].map(m=>({d:DAYIDX[m[1].slice(0,3)],at:m.index,end:m.index+m[0].length}));
+  for(let k=0;k<found.length;k++){const a=found[k],b=found[k+1];
+    if(b&&/^\s*(-|–|—|to)\s*$/.test(seg.slice(a.end,b.at))){let d=a.d;out.add(d);while(d!==b.d){d=(d+1)%7;out.add(d)}k++}
+    else out.add(a.d)}
+  return out}
+function schedule(h){h=String(h||"").trim();if(!h)return null;
+  const sch={def:null,day:{}};let any=false;
+  h.split(/[,;\/\n]|\band\b/i).map(x=>x.trim()).filter(Boolean).forEach(seg=>{
+    const days=daysIn(seg),closed=/closed|off\b/i.test(seg),rng=parseHours(seg.replace(DAYRX," "));
+    if(closed&&days.size){days.forEach(d=>sch.day[d]="closed");if(rng&&!sch.def)sch.def=rng;any=true}
+    else if(rng&&days.size){days.forEach(d=>sch.day[d]=rng);any=true}
+    else if(rng){sch.def=rng;any=true}
+    else if(closed&&!days.size){sch.def={closed:true};any=true}});
+  return any?sch:null}
+function openInfo(h,now=new Date()){const sch=schedule(h);if(!sch)return null;
+  const today=sch.day[now.getDay()]!==undefined?sch.day[now.getDay()]:sch.def;
+  if(today==="closed")return{open:false,label:"Closed today"};
+  if(!today)return Object.keys(sch.day).length&&!sch.def?{open:false,label:"Closed today"}:null;
+  if(today.always)return{open:true,label:"Open 24 hours"};if(today.closed)return{open:false,label:"Closed"};
+  const x=now.getHours()*60+now.getMinutes(),p=today,o=p.o<=p.c?(x>=p.o&&x<p.c):(x>=p.o||x<p.c);
+  return{open:o,label:o?"Open now":"Closed now"}}
+function openState(h,now=new Date()){const i=openInfo(h,now);return i?i.open:null}
 
 /* ---- search: everyday words also find the right shops ---- */
 const SYNONYMS={
@@ -711,7 +738,7 @@ function fillDirectory(){
   const all=visible();const counts={};all.forEach(t=>{counts[t.category]=(counts[t.category]||0)+1});
   const qOn=!!S.q.trim();$("#chips").innerHTML=`<button type="button" class="chip" data-cat="All" aria-pressed="${qOn||S.cat==="All"}">All <small>${all.length}</small></button>`+
     CATS.filter(c=>counts[c.k]).map(c=>`<button type="button" class="chip" data-cat="${esc(c.k)}" aria-pressed="${!qOn&&S.cat===c.k}"><i style="background:var(${c.v})"></i>${esc(c.k)} <small>${counts[c.k]}</small></button>`).join("");
-  const anyHours=all.some(t=>parseHours(t.hours));
+  const anyHours=all.some(t=>schedule(t.hours));
   if(anyHours)$("#chips").insertAdjacentHTML("afterbegin",`<button type="button" class="chip openchip" id="openOnly" aria-pressed="${S.openOnly}"><i style="background:var(--open)"></i>Open now</button>`);
   const nVac=S.tenants.filter(t=>t.status==="Vacant").length;
   if(S.staff&&nVac)$("#chips").insertAdjacentHTML("beforeend",`<button type="button" class="chip vacchip" id="showVac" aria-pressed="${S.showVacant}">${S.showVacant?"Hide":"Show"} vacant <small>${nVac}</small></button>`);
@@ -725,7 +752,7 @@ function fillDirectory(){
     (!S.openOnly||openState(t.hours)===true)&&matches(t,q)).sort((a,b)=>a.name.localeCompare(b.name));
   const card=t=>{const c=catOf(t.category);const wa=waLink(t.phone);
     return `<article class="card" style="--cat:var(${c.v})">${logoHTML(t)}
-      <div>${t.status==="Coming Soon"?`<span class="pill">Coming soon</span>`:""}${t.status==="Vacant"?`<span class="pill vac">Vacant – hidden from public</span>`:""}<h3>${esc(t.name)}</h3><div class="meta">${esc(t.about||c.k)}${t.hours?" · "+esc(t.hours):""}</div>${(()=>{const o=openState(t.hours);return o===null?"":`<span class="oc ${o?"is-open":"is-closed"}">${o?"Open now":"Closed now"}</span>`})()}
+      <div>${t.status==="Coming Soon"?`<span class="pill">Coming soon</span>`:""}${t.status==="Vacant"?`<span class="pill vac">Vacant – hidden from public</span>`:""}<h3>${esc(t.name)}</h3><div class="meta">${esc(t.about||c.k)}${t.hours?" · "+esc(t.hours):""}</div>${(()=>{const o=openInfo(t.hours);return !o?"":`<span class="oc ${o.open?"is-open":"is-closed"}">${o.label}</span>`})()}
       <div class="where">${t.floor?`<span>${esc(t.floor)}</span>`:""}${t.shop?`<span>${/\d/.test(t.shop)?"Shop ":""}${esc(t.shop)}</span>`:""}</div>
       ${t.phone?`<div class="actions"><a href="tel:${esc(t.phone.replace(/\s/g,""))}">Call ${esc(t.phone)}</a>${wa?`<a href="${wa}" target="_blank" rel="noopener">WhatsApp</a>`:""}</div>`:""}${S.staff&&CONFIG.uploadUrl?`<button type="button" class="upl" data-i="${t.i}">✏️ Edit</button>`:""}</div></article>`};
   grid.innerHTML=!list.length?`<div class="empty">${S.tenants.length?(S.openOnly?"No shops are open right now that match your search.":"No shops match your search."):"No shops listed yet."}</div>`:
