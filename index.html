@@ -545,7 +545,7 @@ const facilities=()=>visibleAll().filter(t=>t.category==="Facilities");
 
 /* ---- opening hours: "8am - 9pm", "08:00-21:00", "24 hours", "Closed" ---- */
 function parseHours(h){h=String(h||"").toLowerCase().replace(/\s+/g," ").trim();if(!h)return null;
-  if(/24 ?(hours|hrs|h\b)|24\/7|always open/.test(h))return{always:true};
+  if(/24\s*(x|\/|×|\*)\s*7|24\s*(hours|hrs|hr|h\b)|round the clock|always open|open all day/.test(h))return{always:true};
   if(/^closed/.test(h))return{closed:true};
   const m=h.match(/(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm|a\.m\.|p\.m\.)?\s*(?:-|–|—|to)\s*(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm|a\.m\.|p\.m\.)?/);
   if(!m)return null;
@@ -567,7 +567,7 @@ function daysIn(seg){seg=seg.toLowerCase();const out=new Set();
     if(b&&/^\s*(-|–|—|to)\s*$/.test(seg.slice(a.end,b.at))){let d=a.d;out.add(d);while(d!==b.d){d=(d+1)%7;out.add(d)}k++}
     else out.add(a.d)}
   return out}
-function schedule(h){h=String(h||"").trim();if(!h)return null;
+function schedule(h){h=String(h||"").trim().replace(/24\s*\/\s*7/g,"24x7");if(!h)return null;
   const sch={def:null,day:{}};let any=false;
   h.split(/[,;\/\n]|\band\b/i).map(x=>x.trim()).filter(Boolean).forEach(seg=>{
     const days=daysIn(seg),closed=/closed|off\b/i.test(seg),rng=parseHours(seg.replace(DAYRX," "));
