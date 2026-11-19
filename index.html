@@ -21,6 +21,9 @@ const CONFIG = {
   contactPhone: "0700400500",
   contactEmail: "marketing@shiloahmega.com, marketing-plaza@shiloahmega.com",                  // several? separate with commas
   watermark: true,                    // faint mall logo behind the page
+  // Staff "Edit tenants" button: only shown on devices unlocked with the staff link
+  editUrl: "https://docs.google.com/spreadsheets/d/14xt9tws9H6iMtM5Kdwru3LwVhVpqSQk5AvuMzIYjXuQ/edit",
+  staffKeyHash: "de72c009dffca5a3ea88c80822a717c973407c7de5b7d4953658457e15efa9d6",
   // Your Google Sheet, published as CSV (File > Share > Publish to web > CSV). Leave "" to use the list built into this file.
   sheetCsvUrl: "https://docs.google.com/spreadsheets/d/14xt9tws9H6iMtM5Kdwru3LwVhVpqSQk5AvuMzIYjXuQ/gviz/tq?tqx=out:csv&headers=1&sheet=Mega%20Plaza",
   // Link the QR code opens. Leave "" to use this page's own address.
@@ -223,6 +226,14 @@ body.searching .chips, body.searching #floorf, body.searching .dir-head .seg{dis
   .chips::-webkit-scrollbar{display:none}
   .chip{flex:none}
 }
+
+/* staff edit button (hidden for the public) */
+.staffbox{display:inline-flex;align-items:center;gap:6px}
+.staffbox[hidden]{display:none}
+.editbtn{background:#c27c0e;color:#fff;text-decoration:none;font-weight:700;font-size:14px;padding:8px 14px;border-radius:999px;white-space:nowrap}
+.editbtn:hover{background:#a8690a}
+.staffexit{border:0;background:none;color:#5a6a77;font-size:12px;text-decoration:underline;cursor:pointer;padding:4px}
+@media (max-width:600px){.editbtn{font-size:12px;padding:5px 10px}}
 </style>
 </head>
 <body>
@@ -231,6 +242,7 @@ body.searching .chips, body.searching #floorf, body.searching .dir-head .seg{dis
   <span class="hl" id="coLogo"></span>
   <div class="mid">
     <div class="brand"><h1 id="brandName"></h1><p id="brandTag"></p></div>
+    <span class="staffbox" id="staffBox" hidden><a class="editbtn" id="editBtn" target="_blank" rel="noopener">✏️ Edit tenants</a><button type="button" class="staffexit" id="staffExit" title="Hide the staff button on this device">Exit staff</button></span>
     <nav class="tabs" aria-label="Views"><a href="#directory" id="tabDir">Directory</a><a href="#board" id="tabBoard">Board view</a></nav>
   </div>
   <span class="hr" id="mallLogo"></span>
@@ -443,6 +455,23 @@ function paintFooter(){
   $("#footBrand").textContent=(CONFIG.mallName||"")+(CONFIG.companyName?" · Managed by "+CONFIG.companyName:"");
   const w=$("#wm"),lg=imgUrl(CONFIG.logoUrl);if(w){w.style.backgroundImage=(CONFIG.watermark!==false&&lg)?`url("${lg}")`:"none"}
 }
+/* ---- staff mode: open the page once with ?staff=KEY to show the Edit button on this device ---- */
+async function sha256(t){const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(t));return[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("")}
+function paintStaff(){const box=$("#staffBox");if(!box)return;box.hidden=!S.staff;
+  const a=$("#editBtn");if(a)a.href=CONFIG.editUrl||"#";}
+async function staffInit(){
+  try{
+    const u=new URL(location.href);const k=u.searchParams.get("staff");
+    if(k!==null){
+      if(k==="off")localStorage.removeItem("mp-staff");
+      else if(CONFIG.staffKeyHash&&window.crypto&&crypto.subtle&&await sha256(k)===CONFIG.staffKeyHash)localStorage.setItem("mp-staff",CONFIG.staffKeyHash);
+      u.searchParams.delete("staff");history.replaceState(null,"",u.pathname+u.search+u.hash);   // keep the key out of the address bar
+    }
+    S.staff=!!CONFIG.staffKeyHash&&localStorage.getItem("mp-staff")===CONFIG.staffKeyHash;
+  }catch(e){S.staff=false}
+  paintStaff();
+  const x=$("#staffExit");if(x)x.onclick=()=>{try{localStorage.removeItem("mp-staff")}catch(e){}S.staff=false;paintStaff()};
+}
 function paintHeader(){
   paintFooter();
   document.title=(CONFIG.mallName||"Mall")+" Directory";
@@ -603,7 +632,7 @@ function fillBoard(){
   const ncol=Math.max(1,Math.min(groups.reduce((s,g)=>s+g.items.length,0)>0?6:1,Math.floor((b.clientWidth||1100)/290)));
   const cols=packCols(groups,ncol);
   b.innerHTML=`<div class="board-head"><div class="bh-logo">${logoImg(CONFIG.companyLogoUrl,CONFIG.companyName)}</div>
-      <div class="bh-title"><h2>${esc(CONFIG.mallName||"Mall Directory")}</h2><p>Karibu · Welcome · Shop directory</p></div>
+      <div class="bh-title"><h2>${esc(CONFIG.mallName||"Mall Directory")}</h2><p>Karibu · Welcome · Tenant directory</p></div>
       <div class="bh-logo">${logoImg(CONFIG.logoUrl,CONFIG.mallName)}</div></div>
     <div class="board-cols" style="grid-template-columns:repeat(${cols.length||1},minmax(0,1fr))">${groups.length?cols.map(col=>`<div class="bcol">${col.map(g=>`<section class="bcat" style="--cat:${g.color}"><h3><i></i>${esc(g.title)}${g.cont?" <small>(continued)</small>":""}</h3>
       ${g.items.map(t=>`<div class="brow" style="--cat:var(${catOf(t.category).v})">${logoHTML(t,"mini")}<b>${esc(t.name)}${t.status==="Coming Soon"?' <small class="hint">(coming soon)</small>':""}</b><em>${esc(g.tag(t))}</em></div>`).join("")}
@@ -617,6 +646,7 @@ function fillBoard(){
 }
 
 window.addEventListener("hashchange",show);
+staffInit();
 show();
 load().then(refresh);
 if(CONFIG.sheetCsvUrl&&CONFIG.refreshMinutes>0)setInterval(()=>load().then(refresh),CONFIG.refreshMinutes*60000);
